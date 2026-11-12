@@ -1,12 +1,14 @@
 name: Update CWT + RTT data and deploy
 
-# MOTHBALLED 2026-10-07 — the daily schedule is deliberately DISABLED (see STATUS.md /
-# DECISIONS.md). NHS England's CDN/WAF serves empty pages to GitHub Actions' egress IPs,
-# so the scheduled fetch failed every day from 2026-09-16; the site is frozen on its last
-# good build and this workflow is now a manual publish path.
+# The GitHub-side daily schedule stays DISABLED: NHS England's CDN/WAF serves empty pages
+# to GitHub Actions' egress IPs (since 2026-09-16). Since 2026-11-12 the NHS fetch runs on a
+# local Windows machine instead (scripts/scheduled_refresh.ps1 via Task Scheduler), which
+# commits + pushes new data and then starts THIS workflow to publish it.
 #
 #   Publish what is already committed (default; never contacts NHS):
 #       gh workflow run update-data.yml            # skip_fetch defaults to true
+#   Add -f paused_note=true to show "Automatic updates are currently paused" on the site
+#   (use that if the local scheduled refresh is ever switched off).
 #   Un-mothball: apply a working fetch route, re-enable the schedule below, and flip the
 #   skip_fetch default to false (see STATUS.md "How to un-mothball").
 on:
@@ -18,6 +20,10 @@ on:
         description: "Skip the NHS fetch: rebuild from the COMMITTED data and deploy only"
         type: boolean
         default: true
+      paused_note:
+        description: "Show 'Automatic updates are currently paused' on the site"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -49,7 +55,7 @@ jobs:
         # committed), so its committed site/rtt/data is published as-is.
         run: python -m pipeline.run --no-fetch
       - name: Mark site as manually updated (automatic updates paused)
-        if: ${{ inputs.skip_fetch }}
+        if: ${{ inputs.skip_fetch && inputs.paused_note }}
         run: python -m pipeline_common.freeze_note
 
       # ---- Normal path (scheduled / skip_fetch=false): fetch from NHS and rebuild ----
