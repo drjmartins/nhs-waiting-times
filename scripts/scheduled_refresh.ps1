@@ -55,9 +55,17 @@ $DataPaths = @("data/manifest.json", "data/processed", "site/cancer/data",
 $MetaFiles = @("site/cancer/data/meta.json", "site/rtt/data/meta.json")
 
 Write-Log "==== Scheduled refresh started (python: $Python) ===="
+Write-Host "Refreshing (takes ~4-5 minutes, no output here). Log: $Log"
 $touched = $false   # becomes true once the pipelines start rewriting files
 try {
-    # Refuse to run on top of uncommitted data changes, so we never commit someone's half-finished work.
+    # A run that was interrupted (Ctrl+C, shutdown) can leave just the rebuilt meta.json
+    # timestamps behind. Those carry no data, so restore them and carry on.
+    $metaDirty = git status --porcelain -- $MetaFiles
+    if ($metaDirty) {
+        Write-Log "Restoring leftover meta.json timestamp changes from an interrupted run."
+        git checkout -- $MetaFiles
+    }
+    # Anything else uncommitted in the data paths is real work: refuse rather than commit it blindly.
     $dirty = git status --porcelain -- $DataPaths
     if ($dirty) { throw "Uncommitted changes in data paths already present; resolve them first:`n$dirty" }
 
