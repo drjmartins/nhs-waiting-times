@@ -1,5 +1,5 @@
 {
-  "built_at": "2026-09-15T19:38:57.262541Z",
+  "built_at": "2026-11-12T13:20:34.235972Z",
   "months": [
     "2022-04",
     "2022-05",
@@ -52,11 +52,13 @@
     "2026-04",
     "2026-05",
     "2026-06",
-    "2026-07"
+    "2026-07",
+    "2026-08",
+    "2026-09"
   ],
   "month_range": [
     "2022-04",
-    "2026-07"
+    "2026-09"
   ],
   "source": "https://www.england.nhs.uk/statistics/statistical-work-areas/rtt-waiting-times/",
   "standard_target": 0.92,
@@ -93,9 +95,9 @@
     }
   },
   "counts": {
-    "providers": 602,
+    "providers": 607,
     "icbs": 48,
-    "hidden": 69
+    "hidden": 71
   },
   "treatment_functions": [
     {
@@ -215,7 +217,7 @@
     }
   ],
   "tf_reconciliation": {
-    "checked": 26489,
+    "checked": 27621,
     "max_abs_delta": 0
   },
   "reconciliation": {

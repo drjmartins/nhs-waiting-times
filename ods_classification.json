@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-09-10",
+  "as_of": "2026-10-19",
   "nhs_trust_codes": [
     "G6V2S",
     "K0N6A",
@@ -864,6 +864,23 @@
       "opened": null,
       "predecessors": [],
       "status": "former",
+      "successors": []
+    },
+    "R0D": {
+      "closed": null,
+      "name": "UNIVERSITY HOSPITALS DORSET NHS FOUNDATION TRUST",
+      "opened": "2020-10-01",
+      "predecessors": [
+        {
+          "code": "RDZ",
+          "name": "THE ROYAL BOURNEMOUTH AND CHRISTCHURCH HOSPITALS NHS FOUNDATION TRUST"
+        },
+        {
+          "code": "RD3",
+          "name": "POOLE HOSPITAL NHS FOUNDATION TRUST"
+        }
+      ],
+      "status": "current",
       "successors": []
     },
     "R1G": {
@@ -2375,19 +2392,6 @@
       "opened": null,
       "predecessors": [],
       "status": "former",
-      "successors": []
-    },
-    "RHU": {
-      "closed": null,
-      "name": "PORTSMOUTH HOSPITALS UNIVERSITY NHS TRUST",
-      "opened": null,
-      "predecessors": [
-        {
-          "code": "JC1",
-          "name": "JC1"
-        }
-      ],
-      "status": "current",
       "successors": []
     },
     "RHV": {
@@ -4088,23 +4092,6 @@
           "name": "SOUTH ESSEX PARTNERSHIP UNIVERSITY NHS FOUNDATION TRUST"
         }
       ]
-    },
-    "RV9": {
-      "closed": null,
-      "name": "HUMBER TEACHING NHS FOUNDATION TRUST",
-      "opened": null,
-      "predecessors": [
-        {
-          "code": "RMV",
-          "name": "HULL AND HOLDERNESS COMMUNITY HEALTH NHS TRUST"
-        },
-        {
-          "code": "RMU",
-          "name": "EAST YORKSHIRE COMMUNITY HEALTHCARE NHS TRUST"
-        }
-      ],
-      "status": "current",
-      "successors": []
     },
     "RVF": {
       "closed": null,
