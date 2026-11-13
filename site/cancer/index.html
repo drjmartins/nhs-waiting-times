@@ -429,10 +429,26 @@ const _MN=["January","February","March","April","May","June","July","August","Se
 const fullMonth = m => {const[y,mm]=m.split("-");return _MN[+mm-1]+" "+y;};
 const isoDate = iso => {const[y,m,d]=iso.slice(0,10).split("-");return (+d)+" "+_MN[+m-1]+" "+y;};
 
+// Footer sentence for any standard whose target changed over time (England payload).
+function targetNoteHTML(){
+  const out=[];
+  for(const [code,s] of Object.entries((NATIONAL&&NATIONAL.standards)||{})){
+    const sch=s.target_schedule; if(!sch || sch.length<2) continue;
+    const parts=sch.map(([from,v],i)=>{
+      const until=i<sch.length-1 ? prevMonth(sch[i+1][0]) : null;
+      return i===0 ? `${fmt(v)} up to ${fullMonth(until)}` : `${fmt(v)} from ${fullMonth(from)}`;
+    });
+    out.push(`The ${s.label} target line shows ${parts.join(" and ")}, following NHS England planning guidance; the published standard remains ${fmt(sch[0][1])}.`);
+  }
+  return out.length ? out.join(" ")+"<br><br>" : "";
+}
+const prevMonth = m => {let [y,mm]=m.split("-").map(Number); mm--; if(mm<1){mm=12;y--;} return y+"-"+String(mm).padStart(2,"0");};
 function footerHTML(META){
   const latest=fullMonth(META.months[META.months.length-1]), built=isoDate(META.built_at);
   return `Data source: <a href="https://www.england.nhs.uk/statistics/statistical-work-areas/cancer-waiting-times/" target="_blank" rel="noopener">NHS England Cancer Waiting Times statistics</a>, published monthly and used here under the Open Government Licence v3.0. This dashboard is an independent tool and is not affiliated with or endorsed by NHS England.<br><br>`+
     `Data to ${latest}. Last updated ${built}. Figures for the most recent months are provisional and subject to revision.<br><br>`+
+    // Target note: generated from the data, so it only appears while a standard has a stepped target.
+    targetNoteHTML()+
     // Transparency note for the picker hiding (see build_site_data._negligible_orgs).
     `Organisations with very little recent activity (for providers, no standard reaching at least 10 patients in a single month over the last year; for commissioners, very low recent total volume) are hidden.`;
   // (The Oct-2023 comparability note now lives in the amber banner below the chart
@@ -442,8 +458,8 @@ function footerHTML(META){
 async function init(){
   META = await (await fetch(DATA+"meta.json",{cache:"no-store"})).json();
   DV = (META.built_at||"").replace(/\D/g,"");   // build-version token for all other data fetches
-  document.getElementById("foot").innerHTML = footerHTML(META);
   NATIONAL = await (await fetch(durl("national.json"))).json();
+  document.getElementById("foot").innerHTML = footerHTML(META);   // after NATIONAL: the target note reads it
   const idx = await (await fetch(durl("index.json"))).json();
   window._idx = idx;
   document.getElementById("breaknote").innerHTML = "&#9888; "+META.note;
@@ -706,7 +722,30 @@ function cardSeries(std){
   if(!isGroupSlice()) return base;          // cards follow the GROUP only (route/mod narrow the big chart, not the cards)
   const cg = BREAKDOWN && BREAKDOWN.standards[std] && BREAKDOWN.standards[std].cancer_group;
   const gs = cg && cg[GROUP];
-  return gs ? Object.assign({target:base.target,label:base.label}, gs) : null;
+  return gs ? Object.assign({target:base.target,target_schedule:base.target_schedule,label:base.label}, gs) : null;
+}
+// --- Targets that changed over time ---------------------------------------------
+// A standard's payload may carry `target_schedule`: [firstMonth|null, value] steps,
+// oldest first (set in pipeline/config.py). Each month is judged against the target
+// that applied IN THAT MONTH and the target line is drawn stepped, so history is not
+// re-marked against a later target. No schedule => the single flat `target`.
+function targetAt(s, month){
+  const sch=s.target_schedule; if(!sch || !sch.length) return s.target;
+  let t=sch[0][1];
+  for(const [from,v] of sch){ if(from===null || month>=from) t=v; }
+  return t;
+}
+function targetsFor(s, months){ return months.map(m=>targetAt(s,m)); }
+// SVG path for the target rule over plotted points 0..n-1: flat where the target is
+// constant; where it changes, the line BREAKS midway between the two months and resumes
+// at the new level (no vertical connector, by design choice 2026-11-13).
+function targetPath(tg, x, y){
+  let d=`M${x(0).toFixed(1)} ${y(tg[0]).toFixed(1)}`;
+  for(let i=1;i<tg.length;i++){
+    if(tg[i]!==tg[i-1]){ const xm=((x(i-1)+x(i))/2).toFixed(1);
+      d+=` L${xm} ${y(tg[i-1]).toFixed(1)} M${xm} ${y(tg[i]).toFixed(1)}`; }
+  }
+  return d+` L${x(tg.length-1).toFixed(1)} ${y(tg[tg.length-1]).toFixed(1)}`;
 }
 function renderCards(){
   const host=document.getElementById("cards"); host.innerHTML="";
@@ -728,14 +767,15 @@ function renderCards(){
          <h3>${title}</h3>
          <div class="nogroup">No <b>${GROUP}</b> figures published for this standard here.</div>`;
     } else {
-      const last=s.performance.length-1, cur=s.performance[last], meets=cur>=s.target;
+      const last=s.performance.length-1, cur=s.performance[last];
+      const tgt=targetAt(s,s.months[last]), meets=cur>=tgt;   // the target that applied in the latest month
       const lowLast=(+s.total[last])<THRESH;   // thin latest month → de-emphasise
       card.className="scard"+(std===CURRENT_STD?" active":"");
       card.innerHTML=
         `<div class="stdcode">${std}${grouped?" &middot; "+GROUP:""}</div>
          <h3>${title}</h3>
          <div class="figure"><b class="${lowLast?'muted':''}">${fmt(cur)}</b>
-           <span class="vs ${meets?'meets':'under'}">${meets?'&#10003; meets':'&#9660; below'} ${fmt(s.target)} target</span></div>
+           <span class="vs ${meets?'meets':'under'}">${meets?'&#10003; meets':'&#9660; below'} ${fmt(tgt)} target</span></div>
          <div class="spark">${sparkSVG(s)}</div>
          <div class="mon">latest ${tipMonth(s.months[last])} &middot; ${s.data_status[last]}`+
            (lowLast?` &middot; <span class="lowtag">n=${(+s.total[last])}, low reliability</span>`:``)+`</div>`;
@@ -766,12 +806,12 @@ function sparkSVG(s){
   const sts=(s.data_status||[]).slice(-k);
   const low=i=> tot.length ? (+tot[i])<THRESH : false;
   const unc=i=> low(i) || (sts.length ? sts[i]!=="final" : false);  // uncertain = low-n OR provisional
-  const meets=vals[vals.length-1]>=s.target;
-  let lo=Math.min(...vals,s.target), hi=Math.max(...vals,s.target);
+  const tg=targetsFor(s, s.months.slice(-k));      // per-month target (stepped if it changed)
+  const meets=vals[vals.length-1]>=tg[k-1];
+  let lo=Math.min(...vals,...tg), hi=Math.max(...vals,...tg);
   const pad=(hi-lo)*0.22||0.02; lo-=pad; hi+=pad;  // headroom: keep target off the edge
   const x=i=>P+(i/((k-1)||1))*(W-2*P);
   const y=v=>P+(1-(v-lo)/((hi-lo)||1))*(H-2*P);
-  const ty=y(s.target).toFixed(1);
   let path="";
   for(let i=0;i<k-1;i++){
     const seg=`M${x(i).toFixed(1)} ${y(vals[i]).toFixed(1)} L${x(i+1).toFixed(1)} ${y(vals[i+1]).toFixed(1)}`;
@@ -783,9 +823,9 @@ function sparkSVG(s){
   const dot = low(last) ? `fill="#fff" stroke="var(--org-muted)" stroke-width="1.4"`
                         : `fill="${meets?'var(--org)':'var(--target)'}"`;
   const trend = vals[k-1]>vals[0]?"rising":vals[k-1]<vals[0]?"falling":"broadly flat";
-  const slab=`Trend sparkline: ${trend} over the last ${k} months, latest ${fmt(vals[k-1])} versus a ${fmt(s.target)} target.`;
+  const slab=`Trend sparkline: ${trend} over the last ${k} months, latest ${fmt(vals[k-1])} versus a ${fmt(tg[k-1])} target.`;
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="${escAttr(slab)}">
-    <line x1="${P}" y1="${ty}" x2="${W-P}" y2="${ty}" stroke="var(--target)" stroke-dasharray="3 2" stroke-width="1.1"/>
+    <path d="${targetPath(tg,x,y)}" fill="none" stroke="var(--target)" stroke-dasharray="3 2" stroke-width="1.1"/>
     ${path}
     <circle cx="${x(last).toFixed(1)}" cy="${y(vals[last]).toFixed(1)}" r="2.8" ${dot}/>
   </svg>`;
@@ -831,7 +871,7 @@ function modalityApplicable(){
 function resolveSeries(allStd, bdata, std){
   const base = allStd && allStd[std]; if(!base) return null;
   const dim = bdata && bdata.standards && bdata.standards[std];
-  const wrap = s => s ? Object.assign({target:base.target,label:base.label}, s) : null;
+  const wrap = s => s ? Object.assign({target:base.target,target_schedule:base.target_schedule,label:base.label}, s) : null;
   if(GROUP!==null){
     if(ROUTE!==null){ const gr=dim&&dim.cancer_group_route&&dim.cancer_group_route[GROUP]; return wrap(gr&&gr[ROUTE]); }
     const g=dim&&dim.cancer_group&&dim.cancer_group[GROUP]; return wrap(g);
@@ -1149,7 +1189,7 @@ function legendSwatch(lineAttrs, markAttrs, square){
 const BG={W:920,H:380,P:{l:46,r:76,t:36,b:30}};
 function bigScales(s, nat){
   const xs=s.months, n=xs.length;
-  const vals=s.performance.concat([s.target]);
+  const vals=s.performance.concat(targetsFor(s,s.months));
   if(nat) vals.push(...nat.performance);
   let lo=Math.min(...vals), hi=Math.max(...vals);
   const pad=(hi-lo)*0.10||0.02; lo=Math.max(0,lo-pad); hi=Math.min(1,hi+pad);
@@ -1163,12 +1203,14 @@ function bigScales(s, nat){
 // live-region announcement.
 function bigSummary(s, nat){
   const n=s.performance.length, last=n-1;
-  const cur=s.performance[last], meets=cur>=s.target;
+  const cur=s.performance[last], tgt=targetAt(s,s.months[last]), meets=cur>=tgt;
+  const t0=targetAt(s,s.months[0]);     // differs from tgt when the target changed inside the window
   const title=document.getElementById("bigttl").textContent;
   const who=CURRENT.isNational?"England":CURRENT.name;
   return `${title}, ${who}. Line chart of the monthly percentage treated within standard, `+
     `${tipMonth(s.months[0])} to ${tipMonth(s.months[last])}. Latest ${tipMonth(s.months[last])}: `+
-    `${fmt(cur)}, ${meets?"at or above":"below"} the ${fmt(s.target)} target`+
+    `${fmt(cur)}, ${meets?"at or above":"below"} the ${fmt(tgt)} target`+
+    (t0!==tgt?` (the target line steps up from ${fmt(t0)} during this period)`:``)+
     (nat?`; England comparison shown`:``)+`. Full figures are in the data table below the chart.`;
 }
 function bigSVG(s, nat){
@@ -1201,11 +1243,20 @@ function bigSVG(s, nat){
     }
   }
   // target line + margin label.
-  const ty=y(s.target);
-  // Label sits in the right margin (see BG.P.r), vertically centred on the target line,
-  // right-aligned to the SVG edge — clear of the plotted series at every chart.
-  const tline=`<line x1="${P.l}" y1="${ty.toFixed(1)}" x2="${W-P.r}" y2="${ty.toFixed(1)}" stroke="var(--target)" stroke-dasharray="5 4" stroke-width="1.4"/>`+
-    `<text x="${W-3}" y="${(ty+3.5).toFixed(1)}" font-size="10" text-anchor="end" fill="var(--target-text)">target ${fmt(s.target)}</text>`;
+  // Stepped where the target changed inside the window (see targetAt); flat otherwise.
+  const tg=targetsFor(s,s.months), tLast=tg[n-1], ty=y(tLast);
+  // Label sits in the right margin (see BG.P.r), vertically centred on the CURRENT end of
+  // the target line, right-aligned to the SVG edge — clear of the plotted series.
+  let tline=`<path d="${targetPath(tg,x,y)}" fill="none" stroke="var(--target)" stroke-dasharray="5 4" stroke-width="1.4"/>`+
+    `<text x="${W-3}" y="${(ty+3.5).toFixed(1)}" font-size="10" text-anchor="end" fill="var(--target-text)">target ${fmt(tLast)}</text>`;
+  // Earlier level(s): a small label on each earlier flat run, just before the step.
+  for(let i=1;i<n;i++){
+    if(tg[i]!==tg[i-1]){
+      const xm=(x(i-1)+x(i))/2, up=tg[i]>tg[i-1];
+      tline+=`<text x="${(xm-6).toFixed(1)}" y="${(y(tg[i-1])+(up?13:-6)).toFixed(1)}" font-size="9.5" text-anchor="end" `+
+        `fill="var(--target-text)">${fmt(tg[i-1])} to ${tipMonth(s.months[i-1])}</text>`;
+    }
+  }
   // national overlay: a faint SOLID grey reference line, aligned by MONTH (robust
   // to slices that skip months). Deliberately solid, NOT dashed: "dashed" is
   // reserved for the org series' own states (provisional = lighter navy dashed,
