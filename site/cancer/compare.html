@@ -4,11 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Compare Providers — NHS Cancer Waiting Times Dashboard</title>
+<link rel="stylesheet" href="../assets/sdpl.css?v=1">
 <style>
   :root{
-    --ink:#11202b; --ink-soft:#4a5a64; --line:#d7e0e3; --paper:#fbfcfc;
+    --ink:#141414; --ink-soft:#4a4a4a; --line:#d6d6d1; --paper:#f5f5f2;
     --panel:#ffffff; --org:#0f7d8c; --nat:#838f95; --target:#c8881d;
     --good:#2f7d4f; --bad:#b23b3b; --grid:#eef3f4; --warn:#b23b3b;
+    /* Host-site UI accents (surgicaldatapolicy.org): navy for links/buttons/active states,
+       magenta for the heading accent only. Kept SEPARATE from --org, which is now the
+       chart series colour only, so restyling the UI can never touch the AA-tuned charts.
+       --paper (#f5f5f2) is the page tint: charts and cards must stay on --panel (#fff). */
+    --accent:#0b1d3a; --accent-2:#c2185b;
   }
   *{box-sizing:border-box}
   .vh{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;
@@ -16,28 +22,28 @@
   .pt{cursor:pointer}
   .pt:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
   body{margin:0;background:var(--paper);color:var(--ink);
-    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;line-height:1.5}
+    font-family:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;line-height:1.5}
   .wrap{max-width:1040px;margin:0 auto;padding:32px 24px 80px}
   header{border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:8px}
   h1{font-size:30px;margin:0 0 2px;letter-spacing:-.01em}
-  .sub{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:12px;
+  .sub{font-family:inherit;font-size:12px;
     text-transform:uppercase;letter-spacing:.14em;color:var(--ink-soft)}
-  nav{font-family:ui-monospace,Menlo,monospace;font-size:12px;margin-top:8px}
-  nav a{color:var(--org);text-decoration:underline}
+  nav{font-family:inherit;font-size:12px;margin-top:8px}
+  nav a{color:var(--accent);text-decoration:underline}
   .controls{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin:22px 0 6px}
-  label{display:block;font-family:ui-monospace,Menlo,monospace;font-size:11px;
+  label{display:block;font-family:inherit;font-size:11px;
     text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft);margin-bottom:5px}
   select{font:inherit;font-size:15px;padding:8px 10px;border:1px solid var(--line);
-    border-radius:5px;background:#fff;min-width:min(240px,100%);max-width:calc(100vw - 48px)}
+    border-radius:0;background:#fff;min-width:min(240px,100%);max-width:calc(100vw - 48px)}
   .controls > div{max-width:100%}
-  .period{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--ink-soft);margin:2px 0 0}
+  .period{font-family:inherit;font-size:12px;color:var(--ink-soft);margin:2px 0 0}
   .note{background:#fff7e8;border:1px solid #f0dcae;border-left:3px solid var(--target);
-    padding:10px 13px;font-size:13.5px;color:#6b561f;border-radius:0 4px 4px 0;margin:14px 0}
+    padding:10px 13px;font-size:13.5px;color:#6b561f;border-radius:0;margin:14px 0}
   .note.fallback{background:#fbecec;border-color:#e6bcbc;border-left-color:var(--warn);color:#7a2b2b}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:0;
     padding:16px 18px 12px;margin-top:20px}
   .card h3{margin:0 0 2px;font-size:17px}
-  .card .meta{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--ink-soft);margin-bottom:6px}
+  .card .meta{font-family:inherit;font-size:11px;color:var(--ink-soft);margin-bottom:6px}
   .legend{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--ink-soft);
     display:flex;gap:16px;flex-wrap:wrap;margin:4px 0 0}
   .legend span{display:inline-flex;align-items:center;gap:5px}
@@ -46,17 +52,28 @@
   .methods li{margin:2px 0}
   footer{margin-top:42px;border-top:1px solid var(--line);padding-top:16px;
     font-size:12.5px;color:var(--ink-soft)}
-  a{color:var(--org)}
+  a{color:var(--accent)}
   svg text{font-family:ui-monospace,Menlo,monospace}
   .tip{position:fixed;pointer-events:none;background:var(--ink);color:#fff;font-size:12px;
-    font-family:ui-monospace,Menlo,monospace;padding:5px 8px;border-radius:4px;opacity:0;
+    font-family:ui-monospace,Menlo,monospace;padding:5px 8px;border-radius:0;opacity:0;
     transition:opacity .1s;max-width:260px;z-index:10}
+  /* Host alignment: the former monospace UI labels are now Plex Sans; tighten the
+     tracking that was tuned for monospace. Chart text (svg, legend, tooltip) stays mono. */
+  .sub,label,.flabel,.fgroup,.go{font-weight:600;letter-spacing:.07em}
+  .dashnav,header nav{font-size:13.5px;font-weight:600}
+  .wrap{padding-top:28px;padding-bottom:56px}
 </style>
 </head>
 <body>
+<header class="sitebar">
+  <div class="sitebar-in">
+    <a class="brand" href="https://surgicaldatapolicy.org/"><img src="../assets/sdpl-seal.png" alt="" width="44" height="44"><span>Surgical Data and Policy Lab</span></a>
+    <nav class="sitelinks" aria-label="Surgical Data and Policy Lab"><a href="https://surgicaldatapolicy.org/tools/">All tools</a></nav>
+  </div>
+</header>
 <div class="wrap">
   <header>
-    <h1>NHS Cancer Waiting Times Dashboard</h1>
+    <h1>NHS <em>Cancer Waiting Times</em> Dashboard</h1>
     <div class="sub">England &middot; how providers compare (beta version)</div>
     <nav><a href="index.html">&larr; Per-organisation view</a></nav>
   </header>
@@ -100,6 +117,12 @@
 
   <footer id="foot"></footer>
 </div>
+<footer class="sitefoot">
+  <div class="sitefoot-in">
+    <div><b>Surgical Data and Policy Lab</b><p>Pushing health research into policy change</p></div>
+    <nav aria-label="Lab links"><a href="https://surgicaldatapolicy.org/">surgicaldatapolicy.org</a><a href="https://surgicaldatapolicy.org/tools/">All tools</a></nav>
+  </div>
+</footer>
 <div class="tip" id="tip"></div>
 <!-- Polite live region: announces the funnel/percentile view on each re-render. -->
 <div id="live" class="vh" aria-live="polite" aria-atomic="true"></div>
@@ -123,7 +146,7 @@ const isoDate = iso => {const[y,m,d]=iso.slice(0,10).split("-");return (+d)+" "+
 function footerHTML(META){
   const latest=fullMonth(META.months[META.months.length-1]), built=isoDate(META.built_at);
   return `Data source: NHS England Cancer Waiting Times statistics, published monthly and used here under the Open Government Licence v3.0. This dashboard is an independent tool and is not affiliated with or endorsed by NHS England.<br><br>`+
-    `Data to ${latest}. Last updated ${built}.${META.updates_paused?" Automatic updates are currently paused.":""} Figures for the most recent months are provisional and subject to revision.<br><br>`+
+    `Data to ${latest}. Last updated ${built}. Figures for the most recent months are provisional and subject to revision.<br><br>`+
     `The 31-day and 62-day standards changed in October 2023; figures before that month are not directly comparable and are shown separately.`;
 }
 

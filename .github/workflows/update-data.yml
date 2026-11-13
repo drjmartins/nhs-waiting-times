@@ -7,10 +7,8 @@ name: Update CWT + RTT data and deploy
 #
 #   Publish what is already committed (default; never contacts NHS):
 #       gh workflow run update-data.yml            # skip_fetch defaults to true
-#   Add -f paused_note=true to show "Automatic updates are currently paused" on the site
-#   (use that if the local scheduled refresh is ever switched off).
-#   Un-mothball: apply a working fetch route, re-enable the schedule below, and flip the
-#   skip_fetch default to false (see STATUS.md "How to un-mothball").
+#   If GitHub-side fetching ever becomes possible again: re-enable the schedule below and
+#   flip the skip_fetch default to false (see STATUS.md).
 on:
   # schedule:
   #   - cron: "0 16 * * *"   # daily 16:00 UTC; only does work when NHS posts new files
@@ -20,10 +18,6 @@ on:
         description: "Skip the NHS fetch: rebuild from the COMMITTED data and deploy only"
         type: boolean
         default: true
-      paused_note:
-        description: "Show 'Automatic updates are currently paused' on the site"
-        type: boolean
-        default: false
 
 permissions:
   contents: write
@@ -54,9 +48,6 @@ jobs:
         # the committed ODS cache. RTT cannot rebuild offline (its raw zips are not
         # committed), so its committed site/rtt/data is published as-is.
         run: python -m pipeline.run --no-fetch
-      - name: Mark site as manually updated (automatic updates paused)
-        if: ${{ inputs.skip_fetch && inputs.paused_note }}
-        run: python -m pipeline_common.freeze_note
 
       # ---- Normal path (scheduled / skip_fetch=false): fetch from NHS and rebuild ----
       - name: Fetch new data and rebuild site (Cancer Waiting Times)

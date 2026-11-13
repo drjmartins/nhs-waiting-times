@@ -2,55 +2,46 @@
 
 At-a-glance project state. For the full decision history see `DECISIONS.md`.
 
-_Last updated: 2026-10-07 (Claude Code session; dashboards MOTHBALLED — DEPLOYED + LIVE-VERIFIED, run 37625493430, commit 3ab1844)._
+_Last updated: 2026-11-13 (Claude session; un-mothball clean-up + host-site visual alignment BUILT on branch `unmothball-and-align`, NOT yet pushed or deployed)._
 
-## 🧊 MOTHBALLED 2026-10-07 — site frozen on its last good build (data to **July 2026**), automatic updates deliberately OFF
-**Deployed + live-verified 2026-10-07** via the new manual lever (run 37625493430: build 1m20s + deploy 28s, green; the NHS
-fetch / RTT rebuild / commit steps were SKIPPED and the log has no NHS or ODS request). Live: 182/190 sampled files
-byte-identical to before; the 8 that changed are the 5 page HTMLs + 2 `meta.json` (only the added `updates_paused`
-flag; `built_at` unchanged) — all footers show the note, RTT treatment-function view works (committed breakdown files
-serve 200), `/rtt/index%202.html` now 404.
+## Current state (2026-11-13): LIVE and updating again; no longer mothballed
+- **Repo:** https://github.com/drjmartins/nhs-waiting-times · **Live:** https://waitingtimes.surgicaldatapolicy.org
+  (`/cancer/`, `/rtt/`, landing). Host organisation site: https://surgicaldatapolicy.org (Surgical Data and Policy Lab).
+  Older entries below still name the previous repo (`drjmartins/waiting-times`) and `*.github.io` URL; those are historical.
+- **Update route (since 2026-11-12, Obafunsho):** NHS England's CDN/WAF still blocks GitHub Actions' egress, so the NHS
+  fetch runs on a local Windows machine (`scripts/scheduled_refresh.ps1`, Task Scheduler, daily 18:00). It runs the tests
+  and both pipelines (all gates), commits + pushes when data changed, then starts the publish workflow.
+- **GitHub side = publish only.** `update-data.yml` via `workflow_dispatch`, `skip_fetch` default **true**: tests →
+  `python -m pipeline.run --no-fetch` (cancer rebuilt from the committed store, all gates, committed ODS cache) → RTT's
+  committed `site/rtt/data` published as-is → deploy. The `schedule:` cron stays commented out on purpose. `built_at` is
+  preserved, so "Last updated" names the data refresh, not the deploy day.
+- **Data:** to September 2026 on both dashboards (refreshed 2026-11-12).
+- **Mothball artefacts REMOVED (this branch):** the `updates_paused` flag, `pipeline_common/freeze_note.py`, the workflow's
+  `paused_note` input + stamp step, the footer conditionals on cancer/RTT/compare, the landing page's `#paused` line and
+  script, and the two stamp tests (`tests/test_mothball.py` → `tests/test_publish_path.py`). 89 tests pass. Footer
+  "Data to {month}. Last updated {date}." was always dynamic from `meta.json` and is unchanged.
+- **The live pages still show "Automatic updates are currently paused" until the next publish run**: the live `meta.json`
+  files carry a stale `updates_paused: true` stamped by the 12 Nov publish (made before the stamp became opt-in). Any
+  publish run clears it (`gh workflow run update-data.yml`).
+- **Visual alignment with surgicaldatapolicy.org (this branch, option 2 = everything outside the charts):** see DECISIONS
+  2026-11-13. Chart palette untouched; charts and cards stay on white panels.
+- **BEFORE DEPLOYING this branch:** add the lab seal at `site/assets/sdpl-seal.png` (square PNG, 88px or larger). It could
+  not be fetched from the build sandbox; the header references it and will show a broken image without it.
 
-**Both dashboards stay live, unchanged, on GitHub Pages (static, free, indefinitely).** They are a frozen snapshot:
-**data to July 2026** (cancer AND RTT, 52 months Apr-2022 → Jul-2026), built **15 Sept 2026**. Every page footer now
-says "Automatic updates are currently paused." (landing page too). No final refresh was done before freezing.
+**Known risk (open):** the scheduled refresh runs only while that Windows user is logged on. If it stops, the site goes
+stale with nothing on the page to say so (the manual "paused" note is gone by decision). Failures open a GitHub issue,
+but a machine that is simply off raises nothing. Option if wanted: an automatic on-page note when the data month falls
+more than N months behind today.
 
-**Why:** from 2026-09-16 every scheduled run failed (21 consecutive days to 2026-10-06). NHS England's CDN/WAF returns
-HTTP 200 with an empty page to GitHub Actions' egress IPs (Azure; the identical code/URL works from a normal
-connection) — first RTT, then cancer too. Not an NHS format change and not a code bug. A bounded retry + a new
-cancer fail-loud guard shipped (commit f55d992) but can't route around a fault stable across days. A paid proxy is
-off the table (£0 budget); free options were investigated (DECISIONS 2026-09-21) and none is worth the standing
-infrastructure, so the call is: stale-but-live is the acceptable end state.
+**If GitHub-side fetching ever works again:** test with `gh workflow run update-data.yml -f skip_fetch=false` (green =
+block cleared), then uncomment `schedule:` and flip the `skip_fetch` default to `false`. The parked AWS Lambda relay
+design is in DECISIONS 2026-09-21.
 
-**The cron is deliberately DISABLED** (the `schedule:` trigger in `.github/workflows/update-data.yml` is commented out,
-not deleted). That is intentional — NOT the silent-stale-data trap: nothing is failing, nothing is being missed, and the
-site says on its face that updates are paused. The workflow, retry, and every fail-loud guard are intact and revivable.
-Failure emails are also still muted via the personal Watch → Custom → "Actions" filter; with no cron there are none
-anyway (re-check "Actions" when un-mothballing so a revived cron can alert again).
+**Housekeeping flagged, not done:** `HANDOFF.md` is obsolete (describes the synthetic-data scaffold); stray git ref
+`.git/refs/heads/master 2` on the original laptop clone.
 
-**Manual publish lever** (`workflow_dispatch`, input `skip_fetch`, default **true**): `gh workflow run update-data.yml`
-(or Actions tab → Run workflow). It runs the tests, rebuilds the cancer site from the COMMITTED store (all gates;
-committed ODS cache; **never contacts NHS or ODS**), publishes RTT's committed `site/rtt/data` as-is, stamps the
-"updates paused" note, and deploys. RTT can't rebuild offline (raw zips aren't committed) so its breakdown files are
-now COMMITTED (`.gitignore` no longer ignores them) — without that a publish would ship an RTT with no
-treatment-function view. `built_at` is preserved, so "Last updated" names the data refresh, not the deploy day.
-
-**Occasional hand refresh** (from any unblocked machine — this laptop, or Claude Code on request): run
-`python -m pipeline.run` and `python -m pipeline_rtt.run` locally → commit the CI list
-(`git add data/manifest.json data/processed site/cancer/data data_rtt/manifest.json site/rtt/data ods_classification.json`)
-→ push → `gh workflow run update-data.yml`. Check the footer afterwards: it shows the new data month.
-
-**How to UN-MOTHBALL:** (1) get a working fetch route — either the block has cleared (test with
-`gh workflow run update-data.yml -f skip_fetch=false`; green = cleared) or apply the parked free option: an **AWS
-Lambda relay** doing just the england.nhs.uk fetches (AWS's own WAF docs say `HostingProviderIPList` excludes AWS IPs;
-untested; design + credential handling in DECISIONS 2026-09-21); (2) uncomment `schedule:` in the workflow; (3) flip
-the `skip_fetch` default to `false`; (4) re-check Watch → Custom → "Actions". The on-site note vanishes by itself on the
-first real fetch run (it's driven by a flag only the manual lever sets). Note the revived CI commit step will now also
-commit RTT's ~11 MB breakdown files when data changes.
-
-**Housekeeping flagged, not done:** a stray Finder-duplicate git ref `.git/refs/heads/master 2` makes `git fetch`
-print a harmless "bad object" error; ubuntu-latest migrates to Ubuntu 26 on 2026-10-19 (re-run the tests on it before
-the next real use).
+## (Historical) 2026-10-07 to 2026-11-12: site was MOTHBALLED, frozen at data to July 2026
+Resolved. Full detail in DECISIONS 2026-10-07 (×2); the un-mothball is DECISIONS 2026-11-13.
 
 ## ✅ DEPLOYED + LIVE-VERIFIED 2026-06-29 (run 28362120515, build+deploy GREEN; commit 15acb64) — cron-wedge fix (layered C+B+A+D); 76 tests pass
 **Cron UNWEDGED** (14m6s build + 14s deploy — a real full run, vs the ~30s test-gate failures June-27/28). **Live checks

@@ -6,6 +6,51 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
+## 2026-11-13 — Host-site visual alignment (option 2: everything outside the charts) — BUILT on branch, NOT deployed (Claude session; design choice by user)
+
+**Host tokens were READ from the live surgicaldatapolicy.org (computed styles, 2026-11-13), not assumed.** The brief expected
+serif display headings; the site is actually **IBM Plex Sans throughout** (400/600/700/700 italic; stock Twenty Twenty-Five
+theme with overrides): ink `#141414`, secondary `#4a4a4a`, white base with `#f5f5f2` section bands, navy `#0b1d3a` buttons
+(square corners), magenta `#c2185b` bold-italic heading accent, dark `#141414` footer band, 44px seal + bold site name header.
+
+**What changed (all four pages):** body/headings/controls → self-hosted IBM Plex Sans (`site/assets/fonts`, OFL licence
+included; no third-party requests added); `--ink`/`--ink-soft`/`--line`/`--paper` → host values; square corners; new lab header
+bar (seal + name → main site, "All tools" link) and dark lab footer band, in shared `site/assets/sdpl.css`; `<h1>` gets the
+magenta italic accent phrase. The existing Cancer · RTT · All dashboards strip and the data-source footer are kept.
+
+**Chart palette: UNTOUCHED, and now structurally protected.** `--org` used to be both the chart series colour and the UI
+accent. New tokens `--accent` (navy) and `--accent-2` (magenta) take over every UI use (links, active buttons, card borders,
+checkbox); `--org` is now chart-only. No chart colour changed and no contrast ratio fell. Rules that follow from the numbers:
+- **Charts and cards must stay on `--panel` #fff.** On the `#f5f5f2` page tint `--org-muted` is 2.96:1, `--target` 2.75:1,
+  `--nat` 3.04:1, `--target-text` 4.50:1 (on white: 3.23 / 3.00 / 3.32 / 4.91). The tint is page background only.
+- Navy as link/button colour: 16.79:1 on white, 15.37:1 on the tint. Magenta: 5.87:1 / 5.38:1, headings and focus ring only,
+  never a data state (near-identical lightness to `--bad`).
+- Link underlines kept (1.4.1) although the host's own body links have none.
+- Modal: the lab bar and footer band sit outside `.wrap`, so open/close now sets `inert` + `aria-hidden` on them too.
+
+**Deliberately NOT done (would be "option 3"):** text inside charts, legends and tooltips stays monospace; no label-fit
+re-work. Export (PNG/SVG) title font string changed to Plex with Helvetica/Arial fallback; the font is not embedded, so
+exports opened elsewhere render the title in the fallback sans.
+
+**Verified locally (headless Chromium, real committed data):** all pages at 1280px and 320px: 0px horizontal overflow,
+0 console errors, all four Plex faces load, chart panels compute to pure white, svg text still monospace, footers read
+"Data to September 2026. Last updated 12 November 2026." 89 tests pass.
+
+**Open before deploy:** add `site/assets/sdpl-seal.png` (could not be fetched from the sandbox).
+
+## 2026-11-13 — UN-MOTHBALLED: paused-note lever removed entirely — BUILT on branch, NOT deployed (Claude session; decision by user)
+
+The dashboards update again via the local scheduled refresh (2026-11-12, commits 8c03e12 / fed0db0 / 1471663), so the
+mothball is over. **Finding:** footer dates were never pinned (always `meta.months[-1]` / `meta.built_at`); the live "Automatic
+updates are currently paused" text is a stale `updates_paused: true` in the LIVE `meta.json` files, stamped by the 12 Nov
+publish about an hour before fed0db0 made the stamp opt-in. The committed `meta.json` files do not carry it; one publish
+run clears it. **Decision (user): remove the lever entirely**, not leave it dormant (this supersedes the opt-in `paused_note`
+input added in fed0db0). Removed: `pipeline_common/freeze_note.py`; workflow `paused_note` input + stamp step; footer
+conditionals in cancer/RTT/compare; landing `#paused` element + script; the two stamp tests (file renamed
+`tests/test_publish_path.py`, the two `--no-fetch` tests kept). **Kept, because they are now the live architecture, not
+mothball artefacts:** `skip_fetch` (default true), `pipeline.run --no-fetch`, the commented-out cron, committed RTT breakdown
+files. **Accepted consequence:** if the local refresh stops there is no on-page signal (see STATUS "Known risk").
+
 ## 2026-10-07 — Mothball DEPLOYED + LIVE-VERIFIED via the new manual lever (run 37625493430, commit 3ab1844) (Claude Code)
 
 User approved the three extras (commit the 651 RTT breakdown files + `.gitignore` change; delete `site/rtt/index 2.html`; keep

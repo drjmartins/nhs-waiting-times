@@ -1,22 +1,21 @@
 """
-Tests for the mothball publish path (2026-10-07): `pipeline.run --no-fetch` and the
-`updates_paused` stamp.
+Tests for the publish path: `pipeline.run --no-fetch` (the workflow's skip_fetch run).
 
-The scheduled cron is disabled because NHS's CDN/WAF serves empty pages to GitHub
-Actions' egress. The manual workflow run (skip_fetch, the default) must therefore:
+NHS's CDN/WAF serves empty pages to GitHub Actions' egress, so the NHS fetch runs on a
+local machine (scripts/scheduled_refresh.ps1) and GitHub only publishes what is committed.
+The publish run must therefore:
   1. never contact NHS or ODS (any network call would hit the blocked path),
   2. still run every fail-loud gate (it shares `_gate_and_build` with the fetch path),
   3. keep `built_at` so the footer's "Last updated" names the data refresh, not the
      day it was re-deployed,
-  4. refuse to publish an empty dashboard if the committed store is missing,
-  5. stamp `updates_paused` so the pages show the note.
+  4. refuse to publish an empty dashboard if the committed store is missing.
 """
 import json
 
 import pytest
 
 from pipeline import config, discover, run
-from pipeline_common import freeze_note, ods
+from pipeline_common import ods
 
 
 def _boom(*a, **k):
@@ -57,24 +56,3 @@ def test_run_offline_refuses_a_missing_store(monkeypatch):
     monkeypatch.setattr(run, "_load_store", lambda path=None: None)
     with pytest.raises(RuntimeError, match="committed store"):
         run.run_offline()
-
-
-def test_freeze_note_stamps_flag_and_keeps_the_rest(tmp_path):
-    a, b = tmp_path / "a.json", tmp_path / "b.json"
-    a.write_text(json.dumps({"built_at": "x", "months": ["2026-07"]}))
-    b.write_text(json.dumps({"built_at": "y", "months": ["2026-07"], "n": 1}))
-
-    freeze_note.stamp([str(a), str(b)])
-
-    for p in (a, b):
-        meta = json.loads(p.read_text())
-        assert meta["updates_paused"] is True
-        assert meta["months"] == ["2026-07"]                # nothing else disturbed
-    assert json.loads(b.read_text())["n"] == 1
-
-
-def test_freeze_note_refuses_to_stamp_when_a_meta_is_missing(tmp_path):
-    a = tmp_path / "a.json"
-    a.write_text(json.dumps({"built_at": "x"}))
-    with pytest.raises(FileNotFoundError):
-        freeze_note.stamp([str(a), str(tmp_path / "missing.json")])

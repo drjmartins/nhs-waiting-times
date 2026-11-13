@@ -133,11 +133,11 @@ def _gate_and_build(store, ods_data=None):
 
 
 def run_offline():
-    """Publish path for the mothballed site: rebuild from the COMMITTED store only.
+    """Publish path (the workflow's skip_fetch run): rebuild from the COMMITTED store only.
 
     Never contacts england.nhs.uk (the Actions-egress block) and never goes to ODS
-    either — it uses the committed ODS cache, so the frozen snapshot's org status
-    can't drift and there is no network dependency at all. Every gate still runs.
+    either — it uses the committed ODS cache, so the published org status matches
+    what the local refresh committed and there is no network dependency at all. Every gate still runs.
     `built_at` is carried over from the existing meta.json, so the footer's "Last
     updated" keeps naming when the DATA was refreshed, not the day it was re-deployed.
     """
@@ -176,7 +176,7 @@ if __name__ == "__main__":
     ap.add_argument("--synthetic", action="store_true")
     ap.add_argument("--no-fetch", action="store_true",
                     help="rebuild from the committed store without contacting NHS/ODS "
-                         "(the mothball publish path)")
+                         "(the publish path)")
     args = ap.parse_args()
     if args.synthetic:
         run_synthetic()

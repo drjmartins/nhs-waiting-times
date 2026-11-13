@@ -4,42 +4,60 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NHS Waiting Times Dashboards</title>
+<link rel="stylesheet" href="assets/sdpl.css?v=1">
 <style>
-  :root{ --ink:#11202b; --ink-soft:#4a5a64; --line:#d7e0e3; --paper:#fbfcfc;
-    --panel:#ffffff; --org:#0f7d8c; }
+  :root{ --ink:#141414; --ink-soft:#4a4a4a; --line:#d6d6d1; --paper:#f5f5f2;
+    --panel:#ffffff; --org:#0f7d8c;
+    /* Host-site UI accents (surgicaldatapolicy.org): navy for links/buttons/active states,
+       magenta for the heading accent only. Kept SEPARATE from --org, which is now the
+       chart series colour only, so restyling the UI can never touch the AA-tuned charts.
+       --paper (#f5f5f2) is the page tint: charts and cards must stay on --panel (#fff). */
+    --accent:#0b1d3a; --accent-2:#c2185b;
+  }
   *{box-sizing:border-box}
   body{margin:0;background:var(--paper);color:var(--ink);
-    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;line-height:1.5}
-  .wrap{max-width:880px;margin:0 auto;padding:48px 24px 80px}
+    font-family:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;line-height:1.5}
+  .wrap{max-width:1040px;margin:0 auto;padding:48px 24px 80px}
   header{border-bottom:2px solid var(--ink);padding-bottom:16px;margin-bottom:28px}
   h1{font-size:32px;margin:0 0 4px;letter-spacing:-.01em}
-  .sub{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:12px;
+  .sub{font-family:inherit;font-size:12px;
     text-transform:uppercase;letter-spacing:.14em;color:var(--ink-soft)}
   .cards{display:grid;grid-template-columns:1fr 1fr;gap:20px}
   @media(max-width:680px){.cards{grid-template-columns:1fr}}
   a.card{display:block;background:var(--panel);border:1px solid var(--line);
-    border-top:3px solid var(--org);border-radius:10px;padding:22px 22px 20px;
+    border-top:3px solid var(--accent);border-radius:0;padding:22px 22px 20px;
     text-decoration:none;color:inherit;transition:border-color .12s,box-shadow .12s}
-  a.card:hover{border-color:#bcccd1;box-shadow:0 4px 18px rgba(15,125,140,.12)}
-  a.card h2{margin:0 0 6px;font-size:20px;letter-spacing:-.005em;color:var(--org)}
+  a.card:hover{border-color:#a9a9a3;box-shadow:0 4px 18px rgba(11,29,58,.12)}
+  a.card h2{margin:0 0 6px;font-size:20px;letter-spacing:-.005em;color:var(--accent)}
   a.card p{margin:0;font-size:14.5px;color:var(--ink-soft)}
-  a.card .go{display:inline-block;margin-top:14px;font-family:ui-monospace,Menlo,monospace;
-    font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--org)}
+  a.card .go{display:inline-block;margin-top:14px;font-family:inherit;
+    font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent)}
   footer{margin-top:40px;border-top:1px solid var(--line);padding-top:16px;
     font-size:12.5px;color:var(--ink-soft)}
-  footer a{color:var(--org)}
+  footer a{color:var(--accent)}
   /* Shared dashboard nav strip — identical structure/grammar on landing, /cancer/
      and /rtt/. The current page is non-link marked text (aria-current="page"). */
-  .dashnav{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:12px;margin-top:10px}
-  .dashnav a{color:var(--org);text-decoration:underline}
+  .dashnav{font-family:inherit;font-size:12px;margin-top:10px}
+  .dashnav a{color:var(--accent);text-decoration:underline}
   .dashnav .current{color:var(--ink);font-weight:bold}
   .dashnav .sep{color:var(--line);margin:0 8px}
+  /* Host alignment: the former monospace UI labels are now Plex Sans; tighten the
+     tracking that was tuned for monospace. Chart text (svg, legend, tooltip) stays mono. */
+  .sub,label,.flabel,.fgroup,.go{font-weight:600;letter-spacing:.07em}
+  .dashnav,header nav{font-size:13.5px;font-weight:600}
+  .wrap{padding-top:28px;padding-bottom:56px}
 </style>
 </head>
 <body>
+<header class="sitebar">
+  <div class="sitebar-in">
+    <a class="brand" href="https://surgicaldatapolicy.org/"><img src="assets/sdpl-seal.png" alt="" width="44" height="44"><span>Surgical Data and Policy Lab</span></a>
+    <nav class="sitelinks" aria-label="Surgical Data and Policy Lab"><a href="https://surgicaldatapolicy.org/tools/">All tools</a></nav>
+  </div>
+</header>
 <div class="wrap">
   <header>
-    <h1>NHS Waiting Times Dashboards</h1>
+    <h1>NHS <em>Waiting Times</em> Dashboards</h1>
     <div class="sub">England &middot; independent tools built on NHS England open data</div>
     <nav class="dashnav" aria-label="Dashboards">
       <a href="cancer/">Cancer</a><span class="sep">&middot;</span>
@@ -65,25 +83,13 @@
     Built on <a href="https://www.england.nhs.uk/statistics/" target="_blank" rel="noopener">NHS England statistics</a>
     under the Open Government Licence v3.0. These are independent tools and are not affiliated with or
     endorsed by NHS England.
-    <p id="paused" hidden style="margin:10px 0 0"></p>
   </footer>
 </div>
-<script>
-// Shown only while a dashboard's meta.json carries updates_paused (set by the manual
-// publish workflow); any real data refresh rebuilds meta.json without it. Fails silent.
-(async()=>{
-  try{
-    const get=async p=>(await fetch(p,{cache:"no-store"})).json();
-    const [c,r]=await Promise.all([get("cancer/data/meta.json"),get("rtt/data/meta.json")]);
-    if(!(c.updates_paused||r.updates_paused)) return;
-    const MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
-    const lbl=m=>{const[y,mm]=m.split("-");return MN[+mm-1]+" "+y;};
-    const el=document.getElementById("paused");
-    el.textContent="Automatic updates are currently paused. Cancer Waiting Times data to "+
-      lbl(c.months[c.months.length-1])+"; RTT data to "+lbl(r.months[r.months.length-1])+".";
-    el.hidden=false;
-  }catch(e){}
-})();
-</script>
+<footer class="sitefoot">
+  <div class="sitefoot-in">
+    <div><b>Surgical Data and Policy Lab</b><p>Pushing health research into policy change</p></div>
+    <nav aria-label="Lab links"><a href="https://surgicaldatapolicy.org/">surgicaldatapolicy.org</a><a href="https://surgicaldatapolicy.org/tools/">All tools</a></nav>
+  </div>
+</footer>
 </body>
 </html>
