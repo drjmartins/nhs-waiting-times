@@ -8,11 +8,16 @@
 <style>
   :root{
     --ink:#141414; --ink-soft:#4a4a4a; --line:#d6d6d1; --paper:#f5f5f2;
-    --panel:#ffffff; --org:#0f7d8c; --org-muted:#4f9aa6; --nat:#838f95; --target:#c8881d;
+    --panel:#ffffff; --org:#0b1d3a; --org-muted:#6f84ad; --nat:#868686; --target:#c2185b;
     --good:#2f7d4f; --bad:#b23b3b; --grid:#eef3f4; --milestone:#a08a52;
-    /* Text-label tones for the amber target + tan milestones, decoupled from the
+    /* Text-label tones for the target + tan milestones, decoupled from the
        (deliberately faint) LINE colours so the labels clear 4.5:1. */
-    --target-text:#9a6600; --milestone-text:#75632f;
+    --target-text:#c2185b; --milestone-text:#75632f;
+    /* Chart palette re-aligned to the host site 2026-11-13 (user-approved "option B", see DECISIONS):
+       navy series, lighter navy for provisional/low-reliability, neutral grey England, magenta
+       target line + labels. On the white panel: --org 16.79:1, --org-muted 3.76:1, --nat 3.64:1,
+       --target/--target-text 5.87:1. --note keeps the amber for the banner borders. */
+    --note:#c8881d;
     /* Host-site UI accents (surgicaldatapolicy.org): navy for links/buttons/active states,
        magenta for the heading accent only. Kept SEPARATE from --org, which is now the
        chart series colour only, so restyling the UI can never touch the AA-tuned charts.
@@ -62,7 +67,7 @@
   .filterbtn[disabled],.orgbtnwrap[hidden]{display:none}
   .filterpanel .dropsearch{display:block;width:100%;min-width:0;font:inherit;font-size:14px;padding:7px 9px;
     margin-bottom:6px;border:1px solid var(--line);border-radius:0}
-  .note{background:#fff7e8;border:1px solid #f0dcae;border-left:3px solid var(--target);
+  .note{background:#fff7e8;border:1px solid #f0dcae;border-left:3px solid var(--note);
     padding:10px 13px;font-size:13.5px;color:#6b561f;border-radius:0;margin:14px 0 22px}
   /* Contextual org-lifecycle note (former/newly-formed) — neutral, distinct from the amber break note. */
   .orgnote{background:var(--grid);border:1px solid var(--line);border-left:3px solid var(--accent);
@@ -294,7 +299,7 @@
 </div>
 <footer class="sitefoot">
   <div class="sitefoot-in">
-    <div><b>Surgical Data and Policy Lab</b><p>Pushing health research into policy change</p><p>Dashboards developed by João Martins.</p></div>
+    <div><b>Surgical Data and Policy Lab</b><p>Pushing health research into policy change</p><p>Dashboards developed by Dr João Martins.</p></div>
     <nav aria-label="Lab links"><a href="https://surgicaldatapolicy.org/">surgicaldatapolicy.org</a><a href="https://surgicaldatapolicy.org/tools/">All tools</a></nav>
   </div>
 </footer>
@@ -899,7 +904,7 @@ function rateSVG(s,nat,showMs){
     if(d) natpath=`<path d="${d.trim()}" fill="none" stroke="var(--nat)" stroke-width="1.6" opacity="0.85"/>`;
   }
   // Org line per-segment: a segment touching a low-reliability month (n<THRESH —
-  // relevant once a small TF is sliced at a small provider) is lighter-teal dotted.
+  // relevant once a small TF is sliced at a small provider) is lighter-navy dotted.
   let line="";
   for(let i=0;i<n-1;i++){
     const lowEdge=(+s.total[i])<THRESH || (+s.total[i+1])<THRESH;

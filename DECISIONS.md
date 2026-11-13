@@ -6,6 +6,36 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
+## 2026-11-13 — Chart palette re-aligned to the host site ("option B") — BUILT on branch, NOT deployed (Claude session; EXPLICIT user decision)
+
+**This supersedes the "chart palette untouched" line in the entry below, and replaces the 2026-06-23 teal/amber/grey values.**
+After seeing the page restyle, the user asked for the chart colours to follow the host site too, was shown rendered
+mock-ups of two options with contrast figures and the two caveats below, and chose B (navy series + magenta target).
+
+| Token | Was (2026-06-23) | Now | On white |
+|---|---|---|---|
+| `--org` (org series) | `#0f7d8c` 4.85:1 | `#0b1d3a` | 16.79:1 |
+| `--org-muted` (provisional / n<10) | `#4f9aa6` 3.23:1 | `#6f84ad` | 3.76:1 |
+| `--nat` (England) | `#838f95` 3.32:1 | `#868686` | 3.64:1 |
+| `--target` (target line, latest-point "below" dot) | `#c8881d` 3.00:1 | `#c2185b` | 5.87:1 |
+| `--target-text` ("below target", target label) | `#9a6600` 4.91:1 | `#c2185b` | 5.87:1 |
+
+Every ratio rose; 1.4.11 (3:1 lines) and 1.4.3 (4.5:1 text) both still pass, still **only on the white panel**.
+`--milestone` / `--milestone-text` (RTT), `--good`, `--bad` unchanged. New `--note:#c8881d` keeps the amber left border on
+the break/low-reliability banners (they used `--target`). Shape + dash encoding for provisional / low-reliability unchanged.
+
+**Caveats put to the user before the choice (accepted):** (1) provisional/low-reliability (light navy) and England (grey)
+are now closer in hue than teal-vs-grey was; dash + open markers carry more of the distinction. (2) The target line is no
+longer faint, and magenta is the same lightness as `--bad` red, so "below target" reads closer to "bad" than amber's "caution".
+
+**compare.html is a deliberate exception:** points navy, England line grey, but `--target` STAYS amber there. It draws the
+95% control limits, which sit beside the red (`--bad`) 99.8% limits; magenta vs that red is 1.0:1, so the two limit sets
+would be distinguishable by dash pattern alone. Not put to the user as a choice; flagged in the hand-back. (Comparator is
+still soft-hidden.)
+
+**Verified locally:** all pages 1280px + 320px, 0px overflow, 0 console errors; 89 tests pass. On-page copy that named the
+colour ("lighter-teal dotted segments") updated to navy. Footer credit now "Dashboards developed by Dr João Martins."
+
 ## 2026-11-13 — Host-site visual alignment (option 2: everything outside the charts) — BUILT on branch, NOT deployed (Claude session; design choice by user)
 
 **Host tokens were READ from the live surgicaldatapolicy.org (computed styles, 2026-11-13), not assumed.** The brief expected
@@ -36,7 +66,7 @@ exports opened elsewhere render the title in the fallback sans.
 0 console errors, all four Plex faces load, chart panels compute to pure white, svg text still monospace, footers read
 "Data to September 2026. Last updated 12 November 2026." 89 tests pass.
 
-**Seal + credit:** `site/assets/sdpl-seal.png` made from the image the user supplied; footer band credits "Dashboards developed by João Martins."
+**Seal + credit:** `site/assets/sdpl-seal.png` made from the image the user supplied; footer band credits "Dashboards developed by Dr João Martins."
 
 ## 2026-11-13 — UN-MOTHBALLED: paused-note lever removed entirely — BUILT on branch, NOT deployed (Claude session; decision by user)
 

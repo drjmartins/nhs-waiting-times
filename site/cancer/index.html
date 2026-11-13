@@ -7,14 +7,19 @@
 <link rel="stylesheet" href="../assets/sdpl.css?v=1">
 <style>
   :root{
-    /* Clinical chart-paper palette: cool slate ink, a single signal-amber for
-       the target line, restrained teal for the org series. */
+    /* Clinical chart-paper palette: host-site ink, a single magenta for
+       the target line, restrained navy for the org series. */
     --ink:#141414; --ink-soft:#4a4a4a; --line:#d6d6d1; --paper:#f5f5f2;
-    --panel:#ffffff; --org:#0f7d8c; --org-muted:#4f9aa6; --nat:#838f95; --target:#c8881d;
+    --panel:#ffffff; --org:#0b1d3a; --org-muted:#6f84ad; --nat:#868686; --target:#c2185b;
     --good:#2f7d4f; --bad:#b23b3b; --grid:#eef3f4;
-    /* Text-label tone for the amber target, decoupled from the (deliberately faint)
+    /* Text-label tone for the target; was decoupled from a (then deliberately faint) amber
        --target LINE so the label clears 4.5:1 while the line stays faint. */
-    --target-text:#9a6600;
+    --target-text:#c2185b;
+    /* Chart palette re-aligned to the host site 2026-11-13 (user-approved "option B", see DECISIONS):
+       navy series, lighter navy for provisional/low-reliability, neutral grey England, magenta
+       target line + labels. On the white panel: --org 16.79:1, --org-muted 3.76:1, --nat 3.64:1,
+       --target/--target-text 5.87:1. --note keeps the amber for the banner borders. */
+    --note:#c8881d;
     /* Host-site UI accents (surgicaldatapolicy.org): navy for links/buttons/active states,
        magenta for the heading accent only. Kept SEPARATE from --org, which is now the
        chart series colour only, so restyling the UI can never touch the AA-tuned charts.
@@ -78,7 +83,7 @@
      input[type=search] min-width so it fits the panel). */
   .filterpanel .dropsearch{display:block;width:100%;min-width:0;font:inherit;font-size:14px;padding:7px 9px;
     margin-bottom:6px;border:1px solid var(--line);border-radius:0}
-  .note{background:#fff7e8;border:1px solid #f0dcae;border-left:3px solid var(--target);
+  .note{background:#fff7e8;border:1px solid #f0dcae;border-left:3px solid var(--note);
     padding:10px 13px;font-size:13.5px;color:#6b561f;border-radius:0;margin:14px 0 22px}
   /* Contextual org-lifecycle note (former/newly-formed) — neutral, distinct from the amber break note. */
   .orgnote{background:var(--grid);border:1px solid var(--line);border-left:3px solid var(--accent);
@@ -173,7 +178,7 @@
   .fopt.active{background:rgba(11,29,58,.10);color:var(--accent);font-weight:600}
   .slicehint{font-size:12px;color:var(--ink-soft)}
   .lowrel{font-size:12.5px;color:#6b561f;background:#fff7e8;border:1px solid #f0dcae;
-    border-left:3px solid var(--target);border-radius:0;padding:7px 11px;margin:8px 0 2px}
+    border-left:3px solid var(--note);border-radius:0;padding:7px 11px;margin:8px 0 2px}
   .lowrel[hidden]{display:none}
   .emptyslice{padding:40px 10px;text-align:center;color:var(--ink-soft);font-size:14px}
 
@@ -364,7 +369,7 @@
 </div>
 <footer class="sitefoot">
   <div class="sitefoot-in">
-    <div><b>Surgical Data and Policy Lab</b><p>Pushing health research into policy change</p><p>Dashboards developed by João Martins.</p></div>
+    <div><b>Surgical Data and Policy Lab</b><p>Pushing health research into policy change</p><p>Dashboards developed by Dr João Martins.</p></div>
     <nav aria-label="Lab links"><a href="https://surgicaldatapolicy.org/">surgicaldatapolicy.org</a><a href="https://surgicaldatapolicy.org/tools/">All tools</a></nav>
   </div>
 </footer>
@@ -775,10 +780,10 @@ function renderCards(){
 }
 
 // Small recent-trend sparkline (last ~15 months). Amber dashed target rule sits
-// clearly inside the plot (extra headroom), and the latest-point dot turns amber
+// clearly inside the plot (extra headroom), and the latest-point dot turns magenta (--target)
 // when below target so a rising-but-still-short trend can't read as healthy.
 // Group series at one org can be thin/recent: UNCERTAIN months — provisional OR
-// n<THRESH — are drawn in the lighter teal + dashed (matching the big chart's colour
+// n<THRESH — are drawn in the lighter navy + dashed (matching the big chart's colour
 // logic, where both uncertain states share --org-muted), so a thin/provisional group
 // can't read as a confident sparkline. Colour only here — no circle/square markers
 // (the sparkline carries none; too small). A sub-threshold latest point still shows as
@@ -1124,9 +1129,9 @@ function renderBig(){
   // Legend on ONE line, mirroring the chart EXACTLY (line style + marker shape). The
   // org series + its two uncertain states come first, then a "|" boundary, then the
   // reference lines. Labels are organisation-only (the slice is named in the title).
-  // Both uncertain states share the SAME lighter teal (--org-muted) and are told apart
+  // Both uncertain states share the SAME lighter navy (--org-muted) and are told apart
   // ONLY by shape + dash: provisional = open CIRCLE + dashed; low-reliability = open
-  // SQUARE + dotted. Normal/final keeps the strong solid teal + filled circle.
+  // SQUARE + dotted. Normal/final keeps the strong solid navy + filled circle.
   const item = (sw,mk,sq,label)=>`<span class="lgitem">${legendSwatch(sw,mk,sq)}${label}</span>`;
   const org_ = item(`stroke="var(--org)" stroke-width="2.4"`,`fill="var(--org)"`,false,CURRENT.isNational?"England":"this organisation");
   const prov_ = item(`stroke="var(--org-muted)" stroke-width="1.8" stroke-dasharray="6 4" opacity="0.9"`,`fill="#fff" stroke="var(--org-muted)" stroke-width="1.6"`,false,"provisional");
@@ -1145,7 +1150,7 @@ function renderBig(){
   // Sub-threshold months are SHOWN but flagged, not hidden.
   if(hasLow){
     low.hidden=false;
-    low.innerHTML=`&#9633; Open squares (and lighter-teal dotted segments) mark <em>final</em> months with fewer than ${THRESH} patients in scope — part of this organisation's series, but too thin to read as reliable. Months that are also provisional show as provisional instead.`;
+    low.innerHTML=`&#9633; Open squares (and lighter-navy dotted segments) mark <em>final</em> months with fewer than ${THRESH} patients in scope — part of this organisation's series, but too thin to read as reliable. Months that are also provisional show as provisional instead.`;
   } else low.hidden=true;
 
   // Render hook: ?tip=N opens the tooltip on point N (from the end if negative).
@@ -1233,10 +1238,10 @@ function bigSVG(s, nat){
     `<text x="${W-3}" y="${(ty+3.5).toFixed(1)}" font-size="10" text-anchor="end" fill="var(--target-text)">target ${fmt(s.target)}</text>`;
   // national overlay: a faint SOLID grey reference line, aligned by MONTH (robust
   // to slices that skip months). Deliberately solid, NOT dashed: "dashed" is
-  // reserved for the org series' own states (provisional = lighter teal dashed,
-  // low-reliability = muted teal dashed). When an org's series is mostly
-  // provisional its line is almost entirely dashed teal; a dashed grey England
-  // line beside it was near-indistinguishable. Solid grey vs dashed teal separates
+  // reserved for the org series' own states (provisional = lighter navy dashed,
+  // low-reliability = muted navy dashed). When an org's series is mostly
+  // provisional its line is almost entirely dashed navy; a dashed grey England
+  // line beside it was near-indistinguishable. Solid grey vs dashed navy separates
   // them by BOTH colour and dash, even on a heavily-provisional org.
   let natpath="";
   if(nat){
@@ -1248,12 +1253,12 @@ function bigSVG(s, nat){
     if(d) natpath=`<path d="${d.trim()}" fill="none" stroke="var(--nat)" stroke-width="1.6" opacity="0.85"/>`;
   }
   // org series drawn PER SEGMENT so fragility reaches the line, not just markers.
-  // Both uncertain states use the SAME lighter teal (--org-muted) and are told apart
+  // Both uncertain states use the SAME lighter navy (--org-muted) and are told apart
   // by DASH alone; PROVISIONAL WINS over low-reliability (matches the markers):
-  //  - a segment touching a provisional month is lighter-teal DASHED;
-  //  - else a segment touching a sub-threshold month (n<10) is lighter-teal DOTTED (a
+  //  - a segment touching a provisional month is lighter-navy DASHED;
+  //  - else a segment touching a sub-threshold month (n<10) is lighter-navy DOTTED (a
   //    fragile slice should look fragile — same principle as the funnel);
-  //  - otherwise strong solid teal. (All-final, above-threshold => all solid, as before.)
+  //  - otherwise strong solid navy. (All-final, above-threshold => all solid, as before.)
   let line="";
   for(let i=0;i<n-1;i++){
     const provEdge=s.data_status[i]!=="final" || s.data_status[i+1]!=="final";
@@ -1272,11 +1277,11 @@ function bigSVG(s, nat){
   for(let i=0;i<n-guard;i+=lstep) xl+=`<text x="${x(i).toFixed(1)}" y="${H-8}" font-size="10" text-anchor="middle" fill="var(--ink-soft)">${monthLabel(xs[i])}</text>`;
   xl+=`<text x="${x(n-1).toFixed(1)}" y="${H-8}" font-size="10" text-anchor="end" fill="var(--ink-soft)">${monthLabel(xs[n-1])}</text>`;
   // Point markers. Per-point state is MUTUALLY EXCLUSIVE, provisional wins. Both
-  // uncertain states share the SAME lighter teal (--org-muted) outline; shape alone
+  // uncertain states share the SAME lighter navy (--org-muted) outline; shape alone
   // (+ the line dash) carries the distinction:
   //   provisional            => open CIRCLE
   //   low-reliability & final => open SQUARE
-  //   normal final            => filled strong-teal circle
+  //   normal final            => filled strong-navy circle
   // A point that is BOTH provisional and n<10 renders as provisional (circle), never a
   // square — so the square means specifically "final, but too few patients to trust".
   let pts="";

@@ -8,7 +8,11 @@
 <style>
   :root{
     --ink:#141414; --ink-soft:#4a4a4a; --line:#d6d6d1; --paper:#f5f5f2;
-    --panel:#ffffff; --org:#0f7d8c; --nat:#838f95; --target:#c8881d;
+    --panel:#ffffff; --org:#0b1d3a; --nat:#868686; --target:#c8881d;
+    /* Host alignment 2026-11-13: points are navy and the England line neutral grey, as on the
+       per-organisation pages. --target DELIBERATELY stays amber here (it is magenta on the other
+       pages): it draws the 95% limits, which sit beside the red (--bad) 99.8% limits, and magenta
+       is the same lightness as that red, so the two limit sets would be told apart by dash only. */
     --good:#2f7d4f; --bad:#b23b3b; --grid:#eef3f4; --warn:#b23b3b;
     /* Host-site UI accents (surgicaldatapolicy.org): navy for links/buttons/active states,
        magenta for the heading accent only. Kept SEPARATE from --org, which is now the
@@ -119,7 +123,7 @@
 </div>
 <footer class="sitefoot">
   <div class="sitefoot-in">
-    <div><b>Surgical Data and Policy Lab</b><p>Pushing health research into policy change</p><p>Dashboards developed by João Martins.</p></div>
+    <div><b>Surgical Data and Policy Lab</b><p>Pushing health research into policy change</p><p>Dashboards developed by Dr João Martins.</p></div>
     <nav aria-label="Lab links"><a href="https://surgicaldatapolicy.org/">surgicaldatapolicy.org</a><a href="https://surgicaldatapolicy.org/tools/">All tools</a></nav>
   </div>
 </footer>

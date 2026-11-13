@@ -23,8 +23,9 @@ _Last updated: 2026-11-13 (Claude session; un-mothball clean-up + host-site visu
 - **The live pages still show "Automatic updates are currently paused" until the next publish run**: the live `meta.json`
   files carry a stale `updates_paused: true` stamped by the 12 Nov publish (made before the stamp became opt-in). Any
   publish run clears it (`gh workflow run update-data.yml`).
-- **Visual alignment with surgicaldatapolicy.org (this branch, option 2 = everything outside the charts):** see DECISIONS
-  2026-11-13. Chart palette untouched; charts and cards stay on white panels.
+- **Visual alignment with surgicaldatapolicy.org (this branch):** page chrome fully aligned (option 2) AND, by explicit user
+  decision, the chart palette re-aligned ("option B": navy series, magenta target). All ratios pass AA on the white panels;
+  compare.html keeps amber limits. See DECISIONS 2026-11-13 (×2).
 - **Lab seal:** `site/assets/sdpl-seal.png` (176px, transparent corners) made from the image João supplied 2026-11-13.
 
 **Known risk (open):** the scheduled refresh runs only while that Windows user is logged on. If it stops, the site goes
