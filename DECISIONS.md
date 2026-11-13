@@ -6,7 +6,7 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
-## 2026-11-13 — FDS28 target: stepped, 75% to March 2026 then 80% from April 2026 — BUILT on branch `fds-80-target`, NOT deployed (Claude session; user decision)
+## 2026-11-13 — FDS28 target: stepped, 75% to March 2026 then 80% from April 2026 — DEPLOYED + LIVE-VERIFIED (Claude session; user decision)
 
 **Why:** NHS England's planning guidance set the 28-day Faster Diagnosis target at 80% ("by March 2026" in the 2025/26
 guidance; "maintain at 80%" in the 2026-29 framework). The PUBLISHED statistical standard is still 75% (CWT statistical
@@ -27,6 +27,9 @@ Sep 2026) flips from "meets 75% target" to "below 80% target". An org whose seri
 month Mar 2026) is still judged against 75%.
 **Data:** rebuild from the committed store changes 223 committed cancer JSON files (FDS `target` 0.75 → 0.80 plus the new
 key); no performance figure changes; `meta.json` unchanged. RTT untouched.
+**Deployed 2026-11-13:** branch `fds-80-target` merged to master and published with a manual `update-data.yml` run (green; run
+number not captured). Live check: `national.json` FDS28 carries `target` 0.8 and `target_schedule` [[null,0.75],["2026-04",0.8]];
+CMB31/CMB62 unchanged (0.96 / 0.85, no schedule). The chart itself was checked by the user in a local preview before merge.
 **Verified locally:** 85 tests pass (81 + 4 new in `tests/test_target_schedule.py`); headless render: stepped line in the 3-year
 view, flat 80% in the 12-month view, no console errors, 0px overflow.
 

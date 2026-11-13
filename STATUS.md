@@ -9,7 +9,7 @@ _Last updated: 2026-11-13 (Claude session; un-mothball clean-up, host-site visua
   run, build + deploy green). Live checks: `updates_paused` absent from both live `meta.json` files; landing page has no
   "paused" text and shows the lab header, new title and footer credit; data to September 2026 (built 12 Nov) on both
   dashboards; `/cancer/compare.html` no longer served. Bullets below that say "this branch" are now live.
-- **FDS28 stepped target (branch `fds-80-target`, NOT yet deployed):** target line and "meets/below" judgement are 75% to
+- **FDS28 stepped target (DEPLOYED + LIVE-VERIFIED 2026-11-13):** target line and "meets/below" judgement are 75% to
   March 2026 and 80% from April 2026 (planning-guidance target; published standard still 75%). DECISIONS 2026-11-13.
 - **Local working copy (João's Mac):** `~/Claude/NHS Waiting Times Dashboard/nhs-waiting-times`. The old Desktop copy
   (`cwt-dashboard`) sat in an iCloud-synced folder, which had damaged its git data; do not use it.
