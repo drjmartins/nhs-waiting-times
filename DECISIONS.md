@@ -36,7 +36,7 @@ exports opened elsewhere render the title in the fallback sans.
 0 console errors, all four Plex faces load, chart panels compute to pure white, svg text still monospace, footers read
 "Data to September 2026. Last updated 12 November 2026." 89 tests pass.
 
-**Open before deploy:** add `site/assets/sdpl-seal.png` (could not be fetched from the sandbox).
+**Seal + credit:** `site/assets/sdpl-seal.png` made from the image the user supplied; footer band credits "Dashboards developed by João Martins."
 
 ## 2026-11-13 — UN-MOTHBALLED: paused-note lever removed entirely — BUILT on branch, NOT deployed (Claude session; decision by user)
 

@@ -25,8 +25,7 @@ _Last updated: 2026-11-13 (Claude session; un-mothball clean-up + host-site visu
   publish run clears it (`gh workflow run update-data.yml`).
 - **Visual alignment with surgicaldatapolicy.org (this branch, option 2 = everything outside the charts):** see DECISIONS
   2026-11-13. Chart palette untouched; charts and cards stay on white panels.
-- **BEFORE DEPLOYING this branch:** add the lab seal at `site/assets/sdpl-seal.png` (square PNG, 88px or larger). It could
-  not be fetched from the build sandbox; the header references it and will show a broken image without it.
+- **Lab seal:** `site/assets/sdpl-seal.png` (176px, transparent corners) made from the image João supplied 2026-11-13.
 
 **Known risk (open):** the scheduled refresh runs only while that Windows user is logged on. If it stops, the site goes
 stale with nothing on the page to say so (the manual "paused" note is gone by decision). Failures open a GitHub issue,
