@@ -6,6 +6,17 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
+## 2026-11-13 — Staleness safeguards: on-site "Data may be out of date" note + weekly freshness watchdog (Claude session, John)
+
+**Why:** the NHS fetch now runs on John's laptop (scripts/scheduled_refresh.ps1). It reports its own failures, but if the
+machine stops running it, nothing fails and nothing is reported; the "updates paused" note is gone, so the site wouldn't flag it.
+**Rule (one place each side):** data is STALE once >12 weeks (84 days) have passed since the end of its latest month (NHS
+publishes ~6 weeks after month end, so this only trips on a missed release; Sep-2026 data -> stale from 2026-12-24).
+`pipeline_common/freshness.py` (Python) and `site/assets/freshness.js` (site) — a test keeps their GRACE_DAYS equal.
+**How:** amber note under the header on cancer, RTT and the landing page (hidden when fresh). New workflow
+`freshness-check.yml` (Mondays 08:17 UTC + manual) reads only committed meta.json (never NHS), opens one issue when stale and
+closes it when fresh again. 8 new tests (93 pass).
+
 ## 2026-11-13 — FDS28 target: stepped, 75% to March 2026 then 80% from April 2026 — DEPLOYED + LIVE-VERIFIED (Claude session; user decision)
 
 **Why:** NHS England's planning guidance set the 28-day Faster Diagnosis target at 80% ("by March 2026" in the 2025/26

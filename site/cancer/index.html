@@ -243,6 +243,7 @@
       <a href="../">All dashboards</a>
     </nav>
   </header>
+  <div class="note" id="stalenote" role="status" hidden></div>
 
   <div class="controls">
     <div>
@@ -373,6 +374,7 @@
      (the charts themselves are role="img" with a data-table alternative). -->
 <div id="live" class="vh" aria-live="polite" aria-atomic="true"></div>
 
+<script src="../assets/freshness.js?v=1"></script>
 <script>
 const DATA = "data/";
 // Cache-bust: every data file (except meta.json itself) is fetched with a build-version
@@ -458,6 +460,8 @@ function footerHTML(META){
 async function init(){
   META = await (await fetch(DATA+"meta.json",{cache:"no-store"})).json();
   DV = (META.built_at||"").replace(/\D/g,"");   // build-version token for all other data fetches
+  // "Data may be out of date" if a monthly NHS release looks missed (rule: assets/freshness.js).
+  if(window.Freshness) Freshness.show(document.getElementById("stalenote"), META.months[META.months.length-1]);
   NATIONAL = await (await fetch(durl("national.json"))).json();
   document.getElementById("foot").innerHTML = footerHTML(META);   // after NATIONAL: the target note reads it
   const idx = await (await fetch(durl("index.json"))).json();

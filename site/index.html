@@ -46,6 +46,10 @@
   .sub,label,.flabel,.fgroup,.go{font-weight:600;letter-spacing:.07em}
   .dashnav,header nav{font-size:13.5px;font-weight:600}
   .wrap{padding-top:28px;padding-bottom:56px}
+  /* "Data may be out of date" note (same amber banner as the dashboards). */
+  .note{background:#fff7e8;border:1px solid #f0dcae;border-left:3px solid #c8881d;
+    padding:10px 13px;font-size:13.5px;color:#6b561f;margin:0 0 22px}
+  .note + .note{margin-top:-12px}
 </style>
 </head>
 <body>
@@ -65,6 +69,8 @@
       <span class="current" aria-current="page">All dashboards</span>
     </nav>
   </header>
+  <div class="note" id="stale-cancer" role="status" hidden></div>
+  <div class="note" id="stale-rtt" role="status" hidden></div>
   <div class="cards">
     <a class="card" href="cancer/">
       <h2>Cancer Waiting Times</h2>
@@ -91,5 +97,16 @@
     <nav aria-label="Lab links"><a href="https://surgicaldatapolicy.org/">surgicaldatapolicy.org</a><a href="https://surgicaldatapolicy.org/tools/">All tools</a></nav>
   </div>
 </footer>
+<script src="assets/freshness.js?v=1"></script>
+<script>
+// "Data may be out of date" per dashboard, from each one's meta.json (rule: assets/freshness.js).
+// Fail-quiet: if a meta.json can't be read, the landing page simply shows no note.
+[["cancer","Cancer"],["rtt","RTT"]].forEach(([dir, what])=>{
+  fetch(dir+"/data/meta.json",{cache:"no-store"}).then(r=>r.json()).then(m=>{
+    if(window.Freshness && m.months && m.months.length)
+      Freshness.show(document.getElementById("stale-"+dir), m.months[m.months.length-1], what);
+  }).catch(()=>{});
+});
+</script>
 </body>
 </html>

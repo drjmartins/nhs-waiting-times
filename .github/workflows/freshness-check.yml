@@ -1,0 +1,66 @@
+name: Data freshness check
+
+# Watchdog for the LOCAL scheduled refresh (scripts/scheduled_refresh.ps1). That script opens
+# an issue when a run fails, but if the machine stops running it at all, nothing fails and
+# nothing is reported. This weekly check reads only the COMMITTED meta.json files (it never
+# contacts NHS, so the NHS block on GitHub's servers doesn't affect it) and opens an issue
+# when either dashboard's latest data month is more than 12 weeks old — i.e. a monthly
+# release has very likely been missed. It closes that issue again once data is fresh.
+# Rule: pipeline_common/freshness.py (mirrored on the site by site/assets/freshness.js).
+#
+# Note: GitHub disables scheduled workflows on public repos after 60 days with no commits.
+# Data commits land monthly, and this check fires ~6 weeks after the last one, so it
+# triggers before that can happen.
+on:
+  schedule:
+    - cron: "17 8 * * 1"   # Mondays 08:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TITLE: "Dashboard data may be out of date"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.12" }
+      - name: Check data freshness
+        id: fresh
+        continue-on-error: true
+        run: python -m pipeline_common.freshness | tee freshness.txt
+        shell: bash -o pipefail {0}
+      - name: Open an issue if stale (one at a time)
+        if: steps.fresh.outcome == 'failure'
+        run: |
+          open=$(gh issue list --state open --search "\"$TITLE\" in:title" --json number --jq 'length')
+          if [ "$open" = "0" ]; then
+            {
+              echo "The weekly freshness check found data that looks out of date:"
+              echo
+              echo '```'
+              cat freshness.txt
+              echo '```'
+              echo
+              echo "Most likely the local scheduled refresh (scripts/scheduled_refresh.ps1, Windows Task Scheduler) has stopped running."
+              echo "Check the machine is on and logged in, then run the script by hand and read its log in logs/."
+              echo "This issue closes automatically once the data is fresh again."
+            } > body.md
+            gh issue create --title "$TITLE" --body-file body.md
+          else
+            echo "A staleness issue is already open; not opening another."
+          fi
+      - name: Close the staleness issue once data is fresh
+        if: steps.fresh.outcome == 'success'
+        run: |
+          for n in $(gh issue list --state open --search "\"$TITLE\" in:title" --json number --jq '.[].number'); do
+            gh issue close "$n" --comment "Data is fresh again (weekly freshness check)."
+          done
+      - name: Fail the run if stale (so it shows red in Actions)
+        if: steps.fresh.outcome == 'failure'
+        run: exit 1
