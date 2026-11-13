@@ -1,66 +1,61 @@
-# Cancer Waiting Times Explorer
+# NHS Waiting Times Dashboards
 
-A user-friendly, static dashboard for NHS England Cancer Waiting Times data,
-aimed at researchers, clinicians and NHS analysts. Inspired by the structure of
-OpenPrescribing: pick your organisation, see the standards as time series with a
-national comparison and target line, and download the tidy data.
+Two public dashboards built on NHS England open data, hosted by the
+[Surgical Data and Policy Lab](https://surgicaldatapolicy.org):
+
+- **Cancer Waiting Times** (`/cancer/`): 28-day Faster Diagnosis Standard and the 31- and 62-day
+  combined standards, by provider and commissioner.
+- **RTT (Referral to Treatment)** (`/rtt/`): % within 18 weeks, waiting-list size and long waiters,
+  by provider, commissioner and treatment function.
+
+Live site: https://waitingtimes.surgicaldatapolicy.org
+
+**Read `STATUS.md` (current state, how updates run) and `DECISIONS.md` (full decision history,
+data quirks, accessibility choices) before changing anything, especially the data pipeline.**
 
 ## How it works
 
+A static site (`site/`) fed by build-time Python pipelines. No backend.
+
 ```
-NHS England CWT page
-   │  (daily check; acts only on new/revised files)
-   ▼
-pipeline/discover.py   scrape links, diff against data/manifest.json
-   ▼
-pipeline/normalise.py  map source columns -> canonical tidy schema,
-                       apply provisional→final revisions rule
-   ▼
-data/processed/tidy.parquet   accumulated full tidy table
-   ▼
-pipeline/build_site_data.py   per-org JSON + national.json + index.json
-                              + cwt_tidy.csv (download) + meta.json
-   ▼
-site/  static front end (index.html) — deploy to GitHub Pages / Cloudflare Pages
+pipeline/        cancer: discover NHS files -> normalise -> data/processed/tidy.parquet -> site/cancer/data
+pipeline_rtt/    RTT: discover + fetch monthly Full CSVs -> site/rtt/data
+pipeline_common/ shared: ODS organisation status, regions, retry
+site/            landing page, /cancer/, /rtt/, shared assets (fonts, seal, sdpl.css)
+tests/ tests_rtt/  pytest suites (run before every build and deploy)
+scripts/         the scheduled refresh (Windows Task Scheduler)
 ```
 
-The monthly refresh and deploy are automated by
-`.github/workflows/update-data.yml` (daily cron + manual trigger).
+Both pipelines run fail-loud reconciliation gates before writing anything.
 
-## Design decisions worth knowing
+## How updates run
 
-- **Static site, no backend.** Data changes monthly, so a build-time pipeline
-  feeding static files is cheaper, faster and more secure than a live server.
-- **October 2023 break is explicit.** 31-day and 62-day standards changed then
-  and are not comparable across that line; the UI defaults to data from 2023-10
-  and labels the discontinuity rather than splicing one continuous series.
-- **Revisions are first-class.** Provisional months get overwritten as they are
-  revised; `final` always beats `provisional` for the same period/org/standard.
-- **Format changes fail loudly.** NHS changed the file layout in Nov 2025.
-  `normalise.py` maps a list of candidate column names per field and raises a
-  clear error if a required field can't be mapped — so CI catches the next change.
-- **"Size of the prize" is honest.** v1 shows the arithmetic gap (extra patients
-  per month at a chosen target), explicitly *not* a modelled clinical outcome.
-  A survival/economic module can be layered on later as a separate, caveated step.
+NHS England's website blocks GitHub Actions' servers, so the fetch runs on a local machine and
+GitHub only publishes:
 
-## Run it
+1. `scripts/scheduled_refresh.ps1` (daily, Windows Task Scheduler) runs the tests and both
+   pipelines, then commits and pushes if the data changed.
+2. It then starts `.github/workflows/update-data.yml`, which rebuilds the cancer site from the
+   committed store (`python -m pipeline.run --no-fetch`), publishes the committed RTT data, and
+   deploys `site/` to GitHub Pages.
+
+To publish what is already committed: `gh workflow run update-data.yml`.
+
+## Run it locally
 
 ```bash
 pip install -r requirements.txt
-
-# Offline demo with fabricated data (no network needed):
-python -m pipeline.run --synthetic
-cd site && python -m http.server 8099   # open http://localhost:8099
-
-# Real run (requires network access to england.nhs.uk):
-python -m pipeline.run
+python -m pytest -q                            # tests
+python -m pipeline.run --no-fetch              # rebuild cancer site data from the committed store
+python -m http.server 8099 --directory site    # then open http://localhost:8099
+python -m pipeline.run                         # real cancer run (needs access to england.nhs.uk)
+python -m pipeline_rtt.run                     # real RTT run
 ```
 
-## Important caveat on the prototype
+## Data and licence
 
-The committed `site/data` is built from **synthetic, fabricated numbers** for
-development. Real figures appear only after a successful `python -m pipeline.run`
-against the live NHS England source.
+Source: NHS England Cancer Waiting Times and RTT statistics, used under the Open Government
+Licence v3.0. These are independent tools, not affiliated with or endorsed by NHS England.
+IBM Plex Sans is bundled under the SIL Open Font License (`site/assets/fonts/`).
 
-Data source: NHS England Cancer Waiting Times statistics, Open Government
-Licence v3.0.
+Developed by Dr João Martins.

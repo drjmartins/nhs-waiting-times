@@ -18,14 +18,17 @@ _Last updated: 2026-11-13 (Claude session; un-mothball clean-up + host-site visu
 - **Data:** to September 2026 on both dashboards (refreshed 2026-11-12).
 - **Mothball artefacts REMOVED (this branch):** the `updates_paused` flag, `pipeline_common/freeze_note.py`, the workflow's
   `paused_note` input + stamp step, the footer conditionals on cancer/RTT/compare, the landing page's `#paused` line and
-  script, and the two stamp tests (`tests/test_mothball.py` → `tests/test_publish_path.py`). 89 tests pass. Footer
+  script, and the two stamp tests (`tests/test_mothball.py` → `tests/test_publish_path.py`). Footer
   "Data to {month}. Last updated {date}." was always dynamic from `meta.json` and is unchanged.
 - **The live pages still show "Automatic updates are currently paused" until the next publish run**: the live `meta.json`
   files carry a stale `updates_paused: true` stamped by the 12 Nov publish (made before the stamp became opt-in). Any
   publish run clears it (`gh workflow run update-data.yml`).
-- **Visual alignment with surgicaldatapolicy.org (this branch):** page chrome fully aligned (option 2) AND, by explicit user
-  decision, the chart palette re-aligned ("option B": navy series, magenta target). All ratios pass AA on the white panels;
-  compare.html keeps amber limits. See DECISIONS 2026-11-13 (×2).
+- **Visual alignment with surgicaldatapolicy.org (this branch):** page chrome fully aligned AND, by explicit user decision,
+  the chart palette re-aligned (navy series, magenta target). All ratios pass AA on the white panels. DECISIONS 2026-11-13.
+- **Comparison view DELETED (this branch):** `compare.html`, its data, pipeline step, tests and links are gone. Sections
+  below that mention the comparator, funnel plots or `compare.html` are historical.
+- **Stale files removed (this branch):** HANDOFF.md, the implemented `*-spec.md` files, `live-tool-copy.md`, and the broken
+  `--synthetic` demo path. README rewritten. 81 tests pass.
 - **Lab seal:** `site/assets/sdpl-seal.png` (176px, transparent corners) made from the image João supplied 2026-11-13.
 
 **Known risk (open):** the scheduled refresh runs only while that Windows user is logged on. If it stops, the site goes
@@ -37,8 +40,7 @@ more than N months behind today.
 block cleared), then uncomment `schedule:` and flip the `skip_fetch` default to `false`. The parked AWS Lambda relay
 design is in DECISIONS 2026-09-21.
 
-**Housekeeping flagged, not done:** `HANDOFF.md` is obsolete (describes the synthetic-data scaffold); stray git ref
-`.git/refs/heads/master 2` on the original laptop clone.
+**Housekeeping flagged, not done:** stray git ref `.git/refs/heads/master 2` on the original laptop clone.
 
 ## (Historical) 2026-10-07 to 2026-11-12: site was MOTHBALLED, frozen at data to July 2026
 Resolved. Full detail in DECISIONS 2026-10-07 (×2); the un-mothball is DECISIONS 2026-11-13.
@@ -423,28 +425,13 @@ hook `?england=off`.
    data STILL RETAINS the sub-type level (the `cancer` dim in the breakdown files),
    so a sub-type control can be added later if anyone misses it — a deferral, not a
    data loss.
-4. **Parked.** (a) "Compare this trust" cross-link from the per-org page into the
-   comparison view (planned, not built). (b) Overdispersion ↔ study-protocol
-   alignment — a methods decision for the research side (multiplicative Winsorised
-   φ vs additive random-effects, Winsorisation fraction, whether to adjust).
-   (c) `python -m pipeline.run --synthetic` fails on an unmapped synthetic
-   Cancer_Type 'Lower GI' (cancer_groups.group_for raises) — PRE-EXISTING, found
-   2026-06-29. CI-independent (CI runs pytest + the real run only, never
-   --synthetic), so it never affected deploys; the offline-dev synthetic path is
-   just broken. Fix someday: map 'Lower GI' (and audit synthetic's labels against
-   GROUP_OF) so the offline demo build works again.
-
-## Known things to keep an eye on
-- FDS28 funnel has very high φ (~80) — verified not degenerate (15 trusts beyond
-  95%, 4 beyond 99.8%), so adjustment isn't masking all outliers. Re-check if NHS
-  data shifts. See `DECISIONS.md`.
-- ICB as a comparator scope is deliberately deferred (trust↔ICB is many-to-many);
-  needs an attribution convention from the study protocol before building.
+4. **Closed 2026-11-13.** The three items parked here (the "Compare this trust" link, funnel overdispersion
+   alignment, the broken `--synthetic` path) went away with the comparison view and the synthetic demo path.
 
 ## Running locally
 ```bash
 pip install -r requirements.txt
-python -m pipeline.run --synthetic   # offline dev (separate synthetic store)
+python -m pipeline.run --no-fetch    # rebuild cancer site data from the committed store (no network)
 python -m pipeline.run               # real run against NHS England
 python -m http.server 8099 --directory site   # then open localhost:8099
 python -m pytest -q                  # tests (also run in CI before deploy)

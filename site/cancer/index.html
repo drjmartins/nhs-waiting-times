@@ -53,12 +53,6 @@
      the .orgrow collapses to zero height instead of leaving a blank line. */
   .orgname:empty{display:none}
   .orgname b{color:var(--ink)}
-  /* SOFT-HIDE the provider comparator (compare.html) while it is being iterated.
-     compare.html stays live at its URL (direct links still work); it is just not
-     reachable by clicking. Covers BOTH the header "Compare Providers" link and the
-     per-org "Compare this trust" link, so they re-surface together. To UN-HIDE the
-     comparator everywhere, delete this one rule. */
-  .compare-soft-hidden{display:none !important}
   /* Shared dashboard nav strip — identical structure/grammar on landing, /cancer/
      and /rtt/. The current page is non-link marked text (aria-current="page"). */
   .dashnav{font-family:inherit;font-size:12px;margin-top:8px}
@@ -246,10 +240,7 @@
     <nav class="dashnav" aria-label="Dashboards">
       <span class="current" aria-current="page">Cancer</span><span class="sep">&middot;</span>
       <a href="../rtt/">RTT</a><span class="sep">&middot;</span>
-      <a href="../">All dashboards</a><!--
-      Comparator entry: soft-hidden alongside the per-org "Compare this trust" link
-      (same .compare-soft-hidden class). Delete that one CSS rule to un-hide both.
-   --><span class="compare-soft-hidden"><span class="sep">&middot;</span><a href="compare.html">Compare Providers (Beta) &rarr;</a></span>
+      <a href="../">All dashboards</a>
     </nav>
   </header>
 
@@ -283,13 +274,6 @@
           </div>
         </div>
         <div class="orgname" id="orgname"></div>
-        <!-- "Compare this trust" deep-link into the comparator with this org
-             pre-selected. Soft-hidden alongside the header comparator link (same
-             .compare-soft-hidden class) while the comparator is being iterated;
-             JS keeps it provider-only and sets its href. Un-hides with the rest. -->
-        <a id="comparelink" class="compare-soft-hidden orgcompare"
-           style="font-size:13px;font-weight:600;color:var(--accent);text-decoration:underline;margin-left:12px;vertical-align:middle"
-           href="compare.html" hidden>Compare this trust &rarr;</a>
       </div>
     </div>
   </div>
@@ -697,19 +681,6 @@ function renderOrgNote(code){
   box.innerHTML=msg; box.hidden=false;
 }
 
-// "Compare this trust" deep-link: comparison is trust-level, so show it only for a
-// selected provider (never National / ICB) and carry the org + current standard into
-// the comparator (compare.html reads ?org= to scope + highlight that trust). The
-// .compare-soft-hidden class still hides it globally while the comparator is hidden;
-// this 'hidden' attribute is what gates it to providers once that class is removed.
-function syncCompareLink(){
-  const a=document.getElementById("comparelink"); if(!a) return;
-  const isProvider = !CURRENT.isNational && CURRENT.level==="provider";
-  a.hidden = !isProvider;
-  if(isProvider)
-    a.href = "compare.html?org="+encodeURIComponent(CURRENT.code)+"&std="+encodeURIComponent(CURRENT_STD);
-}
-
 function render(){
   // If the org we switched to lacks the kept standard, fall back sensibly.
   if(!CURRENT.standards[CURRENT_STD])
@@ -721,7 +692,6 @@ function render(){
   document.getElementById("orgname").textContent = CURRENT.isNational
     ? ""
     : (CURRENT.region && CURRENT.region!=="England" ? CURRENT.region : "");
-  syncCompareLink();
   closePanel(); closeModPanel(); updateGroupLabel();
   renderCards();
   renderBig();   // calls syncBreakdownUI() to sync the route/modality controls

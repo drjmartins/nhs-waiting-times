@@ -6,6 +6,35 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
+## 2026-11-13 — Comparison view DELETED; stale code and documents removed — BUILT on branch, NOT deployed (Claude session; user decision)
+
+**Comparison view removed entirely (user decision).** It had been soft-hidden since 2026-06-23. Deleted:
+`site/cancer/compare.html`, the 62 committed `site/cancer/data/compare/*.json`, the header "Compare Providers" link, the
+per-org "Compare this trust" link + `syncCompareLink()`, the `.compare-soft-hidden` rule; pipeline `_build_comparison`,
+`_overdispersion`, `_period_label`, `_slug`, `_measure_label` and config `FUNNEL_LIMITS`, `NHS_REGIONS`, `REGION_MIN_TRUSTS`,
+`COMPARISON_BREAKDOWNS`; `meta.json`'s `comparison` key; `tests/test_comparison.py`; `comparison-view-spec.md`.
+`/cancer/compare.html` will 404 after the next deploy. This makes the compare.html amber exception in the entry below moot,
+and closes the parked items on funnel overdispersion, the "Compare this trust" link and ICB comparator scope.
+- **Kept on purpose:** `_recent_final_months` and its window constant, because the commissioner picker-hiding rule uses them
+  (renamed `COMPARISON_WINDOW_MONTHS` → `RECENT_FINAL_WINDOW_MONTHS`, value 3 unchanged); `RELIABILITY_THRESHOLD`; the
+  provider `region` in `index.json` (the RTT picker reuses it via `pipeline_common/regions.py`).
+- **Verified:** `python -m pipeline.run --no-fetch` on the committed store passes every gate and leaves every committed
+  cancer data file byte-identical; `meta.json` differs only by the removed `comparison` key. 81 tests pass (89 − 8 comparison
+  tests). Cancer page renders with no console errors.
+
+**Stale items removed (recoverable from git history at commit fdb69d8 or earlier):**
+- `HANDOFF.md` (the original scaffold hand-off; described synthetic data and a two-session working agreement no longer used).
+- Implemented planning specs: `breakdown-hierarchy-v6-spec.md`, `cancer-aggregation-v5-spec.md`, `per-org-filtering-spec.md`,
+  `per-org-redesign-spec_1.md`, `per-org-visual-v4-spec.md`, `v7-labelling-and-org-hiding-spec.md`, `live-tool-copy.md`.
+  Older entries in this log still cite them by filename; read those citations as historical.
+- The synthetic demo path: `pipeline/synthetic.py`, `run_synthetic()`, the `--synthetic` flag and `SYNTHETIC_STORE`. It had
+  been broken since 2026-06-29 (unmapped 'Lower GI') and was never used by CI or the refresh. `normalise.py` still accepts
+  pre-collapsed (type, value) input because the test fixtures use that shape.
+- `README.md` rewritten (it still described a synthetic-data prototype).
+
+**Not removed, flagged:** the long historical sections of STATUS.md (kept as the record); `.gitignore` entries for local-only
+dev files (render harness, screenshots, synthetic store) so leftovers on a laptop cannot be committed by accident.
+
 ## 2026-11-13 — Chart palette re-aligned to the host site ("option B") — BUILT on branch, NOT deployed (Claude session; EXPLICIT user decision)
 
 **This supersedes the "chart palette untouched" line in the entry below, and replaces the 2026-06-23 teal/amber/grey values.**

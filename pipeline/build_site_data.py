@@ -5,15 +5,12 @@ Outputs:
   site/data/index.json          - list of orgs (for the search/picker)
   site/data/org/<CODE>.json     - per-org time series for all standards
   site/data/national.json       - England series (used as comparison line)
-  site/data/compare/index.json  - catalogue of comparison measures
-  site/data/compare/<measure>.json - per-measure trust comparison (funnel data)
   site/data/downloads/          - targeted CSV slices + gzipped full file
   site/data/meta.json           - build metadata + comparability note
 """
 import gzip
 import json
 import os
-import re
 import datetime as dt
 
 import pandas as pd
@@ -23,7 +20,7 @@ from . import cancer_groups
 from pipeline_common import ods
 
 # Non-real placeholder orgs (e.g. the 'UNKNOWN' unallocated-commissioner bucket).
-# Hidden from the picker and comparison view, but RETAINED in the tidy store and
+# Hidden from the picker, but RETAINED in the tidy store and
 # in national totals so sums still reconcile.
 PLACEHOLDER_NAMES = {"UNKNOWN"}
 
@@ -373,10 +370,6 @@ def _breakdown_payload(df_org):
     return out
 
 
-_MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-
-
 def _financial_year(month):
     """'2025-07' -> '2025-26' (NHS financial year, Apr-Mar)."""
     y, m = (int(x) for x in month.split("-"))
@@ -384,31 +377,10 @@ def _financial_year(month):
     return f"{start}-{str(start + 1)[-2:]}"
 
 
-def _recent_final_months(df, k=config.COMPARISON_WINDOW_MONTHS):
+def _recent_final_months(df, k=config.RECENT_FINAL_WINDOW_MONTHS):
     """The k most recent FINALISED months (provisional months excluded)."""
     fin = sorted(df.loc[df["data_status"] == "final", "month"].unique())
     return fin[-k:]
-
-
-def _period_label(months):
-    if not months:
-        return ""
-    a, b = months[0].split("-"), months[-1].split("-")
-    am, bm = _MONTH_ABBR[int(a[1]) - 1], _MONTH_ABBR[int(b[1]) - 1]
-    if len(months) == 1:
-        return f"{am} {a[0]}, finalised"
-    if a[0] == b[0]:
-        return f"{am}–{bm} {b[0]}, finalised"
-    return f"{am} {a[0]}–{bm} {b[0]}, finalised"
-
-
-def _slug(s):
-    return re.sub(r"[^A-Za-z0-9]+", "-", str(s)).strip("-").lower() or "na"
-
-
-def _measure_label(std, breakdown_type, breakdown_value):
-    base = config.STANDARDS[std]["label"].split("(")[0].strip()
-    return f"{base} — all cancers" if breakdown_type == "all" else f"{base} — {breakdown_value}"
 
 
 def _num(v):
@@ -416,108 +388,6 @@ def _num(v):
     truthful rather than truncating 0.5 -> 0, but show whole counts as ints."""
     v = float(v)
     return int(v) if v.is_integer() else round(v, 1)
-
-
-def _overdispersion(t, p0):
-    """
-    Winsorised multiplicative overdispersion factor phi (after Spiegelhalter).
-    Plain binomial limits assume every trust is otherwise identical and so flag
-    a large share of trusts at large denominators; phi widens the limits to
-    reflect genuine between-trust variation. Estimated from threshold-clearing
-    units only (a 0.5-patient unit has no business setting the dispersion), and
-    Winsorised at the 10th/90th percentiles so a few extreme trusts don't blow
-    it up. Returns phi >= 1 (1.0 = no overdispersion / fall back to binomial).
-    """
-    if p0 is None or not (0 < p0 < 1):
-        return 1.0
-    rel = t[t["total"] >= config.RELIABILITY_THRESHOLD]
-    if len(rel) < 3:
-        return 1.0
-    se = (p0 * (1 - p0) / rel["total"]) ** 0.5
-    z = ((rel["performance"] - p0) / se).sort_values().reset_index(drop=True)
-    n = len(z)
-    lo, hi = z.iloc[int(0.10 * n)], z.iloc[min(n - 1, int(0.90 * n))]
-    phi = float((z.clip(lo, hi) ** 2).mean())
-    return round(max(1.0, phi), 3)
-
-
-def _build_comparison(df, out_dir):
-    """
-    Precompute one funnel/comparison dataset per measure (standard x optional
-    cancer/route/modality), pooled over the recent finalised window by summing
-    numerators and denominators. Control-limit anchoring (national p0, z-values,
-    threshold) ships in each file; the front end draws the limit curves and does
-    scope filtering / fallback. Region scoping is a client filter on the trust
-    list, so a single national-anchored file serves every scope.
-    """
-    months = _recent_final_months(df)
-    compare_dir = os.path.join(out_dir, "compare")
-    os.makedirs(compare_dir, exist_ok=True)
-
-    prov = df[(df["org_level"] == "provider")
-              & (df["month"].isin(months))
-              & (df["breakdown_type"].isin(config.COMPARISON_BREAKDOWNS))]
-    prov = prov[~prov["org_name"].str.upper().isin(PLACEHOLDER_NAMES)
-                & ~prov["org_code"].str.upper().isin(PLACEHOLDER_NAMES)]
-
-    measures, used = [], set()
-    for (std, bt, bv), g in prov.groupby(["standard", "breakdown_type", "breakdown_value"]):
-        t = g.groupby(["org_code", "org_name", "region"], as_index=False).agg(
-            within=("within_target", "sum"), total=("total", "sum"))
-        t = t[t["total"] > 0]
-        if t.empty:
-            continue
-        t["performance"] = (t["within"] / t["total"]).round(4)
-        t["sub_threshold"] = t["total"] < config.RELIABILITY_THRESHOLD
-        within_sum, total_sum = float(t["within"].sum()), float(t["total"].sum())
-        p0 = round(within_sum / total_sum, 4) if total_sum else None
-        phi = _overdispersion(t, p0)
-
-        fname = f"{std}__{bt}__{_slug(bv)}.json"
-        n = 2
-        while fname in used:  # guarantee unique filenames across breakdown values
-            fname = f"{std}__{bt}__{_slug(bv)}-{n}.json"
-            n += 1
-        used.add(fname)
-
-        trusts = [{"code": r.org_code, "name": r.org_name, "region": r.region,
-                   "within": _num(r.within), "total": _num(r.total),
-                   "performance": r.performance, "sub_threshold": bool(r.sub_threshold)}
-                  for r in t.sort_values("total", ascending=False).itertuples()]
-        with open(os.path.join(compare_dir, fname), "w") as f:
-            json.dump({
-                "standard": std, "breakdown_type": bt, "breakdown_value": bv,
-                "label": _measure_label(std, bt, bv),
-                "period_months": months, "period_label": _period_label(months),
-                "threshold": config.RELIABILITY_THRESHOLD, "z": config.FUNNEL_LIMITS,
-                "overdispersion": {"phi": phi, "winsorised": True,
-                                   "n_units": int((t["total"] >= config.RELIABILITY_THRESHOLD).sum())},
-                "national": {"within": _num(within_sum), "total": _num(total_sum), "performance": p0},
-                "trusts": trusts,
-            }, f, separators=(",", ":"))
-
-        region_clear = (t[~t["sub_threshold"]].groupby("region").size().to_dict())
-        measures.append({
-            "standard": std, "breakdown_type": bt, "breakdown_value": bv,
-            "label": _measure_label(std, bt, bv), "file": fname,
-            "n_trusts": len(trusts), "n_threshold": int((~t["sub_threshold"]).sum()),
-            "region_threshold_counts": {k: int(v) for k, v in region_clear.items()},
-        })
-
-    catalogue = {
-        "period_months": months, "period_label": _period_label(months),
-        "threshold": config.RELIABILITY_THRESHOLD,
-        "window_months": config.COMPARISON_WINDOW_MONTHS, "z": config.FUNNEL_LIMITS,
-        "regions": config.NHS_REGIONS, "region_min_trusts": config.REGION_MIN_TRUSTS,
-        "comparability_break": config.COMPARABILITY_BREAK,
-        "standards": {k: v["label"] for k, v in config.STANDARDS.items()},
-        "targets": {k: v["target"] for k, v in config.STANDARDS.items()},
-        "measures": sorted(measures, key=lambda m: (m["standard"], m["breakdown_type"], m["breakdown_value"])),
-    }
-    with open(os.path.join(compare_dir, "index.json"), "w") as f:
-        json.dump(catalogue, f, separators=(",", ":"))
-    return {"period_months": months, "period_label": _period_label(months),
-            "n_measures": len(measures)}
 
 
 def _build_downloads(df, out_dir):
@@ -613,8 +483,7 @@ def build(df, out_dir=config.SITE_DATA_DIR, classification=None, trust_codes=Non
         with open(os.path.join(out_dir, "national.breakdown.json"), "w") as f:
             json.dump(_breakdown_payload(nat), f, separators=(",", ":"))
 
-    # Trust comparison datasets (funnel / percentile) + targeted downloads
-    comparison = _build_comparison(df, out_dir)
+    # Targeted downloads
     downloads = _build_downloads(df, out_dir)
 
     # Metadata
@@ -626,7 +495,6 @@ def build(df, out_dir=config.SITE_DATA_DIR, classification=None, trust_codes=Non
         "hidden_from_picker": n_hidden,
         "months": sorted(df["month"].unique().tolist()),
         "standards": {k: v["label"] for k, v in config.STANDARDS.items()},
-        "comparison": comparison,
         "downloads": downloads,
         # Composite-group make-up, sourced from cancer_groups so the front-end
         # description can't drift from the actual mapping (v7). Composite groups

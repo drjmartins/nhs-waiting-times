@@ -57,15 +57,14 @@ CANONICAL_COLUMNS = [
     "source_file",    # provenance: which CSV this row came from
 ]
 
-# --- Trust comparison view (see comparison-view-spec.md) --------------------
-# THE reliability threshold (single source of truth): a trust-period aggregate
-# with a denominator below this is "sub-threshold" -- shown in the funnel only,
-# never the percentile view.
+# THE reliability threshold (single source of truth): a monthly figure with a
+# denominator below this is "low reliability" (flagged on the charts), and it is the
+# activity bar for the provider picker-hiding rule below.
 RELIABILITY_THRESHOLD = 10
 
-# Comparison basis: the most recent N FINALISED months, pooled by summing
-# numerators and denominators (never averaging monthly percentages).
-COMPARISON_WINDOW_MONTHS = 3
+# "Recent finalised months" window used by the commissioner picker-hiding rule
+# below: the most recent N FINALISED months, pooled by summing denominators.
+RECENT_FINAL_WINDOW_MONTHS = 3
 
 # --- Picker hiding (selection-only; see build_site_data._negligible_orgs) ------
 # Negligible-activity orgs are hidden from the picker/default lists but kept in
@@ -96,24 +95,6 @@ PICKER_MIN_COMMISSIONER_DENOM = 2000
 # "no year-ago data" note + n<10 flag handle the thin view). ODS status is what
 # separates young (current) from dormant (former) — both can have minimal data.
 YOUNG_WINDOW_MONTHS = 12
-
-# Funnel control limits, anchored to the national distribution. z for two-sided
-# 95% (~2 SD) and 99.8% (~3 SD), per standard funnel methodology.
-FUNNEL_LIMITS = {"p95": 1.96, "p998": 3.09}
-
-# Region scopes available as comparison comparators (England is implicit).
-NHS_REGIONS = [
-    "East of England", "London", "Midlands", "North East and Yorkshire",
-    "North West", "South East", "South West",
-]
-
-# A region needs at least this many threshold-clearing trusts for a measure,
-# else the scope widens one step (region -> England).
-REGION_MIN_TRUSTS = 5
-
-# Breakdown dimensions a user can narrow a measure by (combination rows are kept
-# in the store but are not offered as comparison measures in v1).
-COMPARISON_BREAKDOWNS = ["all", "cancer", "route", "modality"]
 
 # Where things get written.
 RAW_DIR = "data/raw"
