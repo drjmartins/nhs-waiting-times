@@ -6,6 +6,110 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
+## 2026-11-13 — Comparison view DELETED; stale code and documents removed — BUILT on branch, NOT deployed (Claude session; user decision)
+
+**Comparison view removed entirely (user decision).** It had been soft-hidden since 2026-06-23. Deleted:
+`site/cancer/compare.html`, the 62 committed `site/cancer/data/compare/*.json`, the header "Compare Providers" link, the
+per-org "Compare this trust" link + `syncCompareLink()`, the `.compare-soft-hidden` rule; pipeline `_build_comparison`,
+`_overdispersion`, `_period_label`, `_slug`, `_measure_label` and config `FUNNEL_LIMITS`, `NHS_REGIONS`, `REGION_MIN_TRUSTS`,
+`COMPARISON_BREAKDOWNS`; `meta.json`'s `comparison` key; `tests/test_comparison.py`; `comparison-view-spec.md`.
+`/cancer/compare.html` will 404 after the next deploy. This makes the compare.html amber exception in the entry below moot,
+and closes the parked items on funnel overdispersion, the "Compare this trust" link and ICB comparator scope.
+- **Kept on purpose:** `_recent_final_months` and its window constant, because the commissioner picker-hiding rule uses them
+  (renamed `COMPARISON_WINDOW_MONTHS` → `RECENT_FINAL_WINDOW_MONTHS`, value 3 unchanged); `RELIABILITY_THRESHOLD`; the
+  provider `region` in `index.json` (the RTT picker reuses it via `pipeline_common/regions.py`).
+- **Verified:** `python -m pipeline.run --no-fetch` on the committed store passes every gate and leaves every committed
+  cancer data file byte-identical; `meta.json` differs only by the removed `comparison` key. 81 tests pass (89 − 8 comparison
+  tests). Cancer page renders with no console errors.
+
+**Stale items removed (recoverable from git history at commit fdb69d8 or earlier):**
+- `HANDOFF.md` (the original scaffold hand-off; described synthetic data and a two-session working agreement no longer used).
+- Implemented planning specs: `breakdown-hierarchy-v6-spec.md`, `cancer-aggregation-v5-spec.md`, `per-org-filtering-spec.md`,
+  `per-org-redesign-spec_1.md`, `per-org-visual-v4-spec.md`, `v7-labelling-and-org-hiding-spec.md`, `live-tool-copy.md`.
+  Older entries in this log still cite them by filename; read those citations as historical.
+- The synthetic demo path: `pipeline/synthetic.py`, `run_synthetic()`, the `--synthetic` flag and `SYNTHETIC_STORE`. It had
+  been broken since 2026-06-29 (unmapped 'Lower GI') and was never used by CI or the refresh. `normalise.py` still accepts
+  pre-collapsed (type, value) input because the test fixtures use that shape.
+- `README.md` rewritten (it still described a synthetic-data prototype).
+
+**Not removed, flagged:** the long historical sections of STATUS.md (kept as the record); `.gitignore` entries for local-only
+dev files (render harness, screenshots, synthetic store) so leftovers on a laptop cannot be committed by accident.
+
+## 2026-11-13 — Chart palette re-aligned to the host site ("option B") — BUILT on branch, NOT deployed (Claude session; EXPLICIT user decision)
+
+**This supersedes the "chart palette untouched" line in the entry below, and replaces the 2026-06-23 teal/amber/grey values.**
+After seeing the page restyle, the user asked for the chart colours to follow the host site too, was shown rendered
+mock-ups of two options with contrast figures and the two caveats below, and chose B (navy series + magenta target).
+
+| Token | Was (2026-06-23) | Now | On white |
+|---|---|---|---|
+| `--org` (org series) | `#0f7d8c` 4.85:1 | `#0b1d3a` | 16.79:1 |
+| `--org-muted` (provisional / n<10) | `#4f9aa6` 3.23:1 | `#6f84ad` | 3.76:1 |
+| `--nat` (England) | `#838f95` 3.32:1 | `#868686` | 3.64:1 |
+| `--target` (target line, latest-point "below" dot) | `#c8881d` 3.00:1 | `#c2185b` | 5.87:1 |
+| `--target-text` ("below target", target label) | `#9a6600` 4.91:1 | `#c2185b` | 5.87:1 |
+
+Every ratio rose; 1.4.11 (3:1 lines) and 1.4.3 (4.5:1 text) both still pass, still **only on the white panel**.
+`--milestone` / `--milestone-text` (RTT), `--good`, `--bad` unchanged. New `--note:#c8881d` keeps the amber left border on
+the break/low-reliability banners (they used `--target`). Shape + dash encoding for provisional / low-reliability unchanged.
+
+**Caveats put to the user before the choice (accepted):** (1) provisional/low-reliability (light navy) and England (grey)
+are now closer in hue than teal-vs-grey was; dash + open markers carry more of the distinction. (2) The target line is no
+longer faint, and magenta is the same lightness as `--bad` red, so "below target" reads closer to "bad" than amber's "caution".
+
+**compare.html is a deliberate exception:** points navy, England line grey, but `--target` STAYS amber there. It draws the
+95% control limits, which sit beside the red (`--bad`) 99.8% limits; magenta vs that red is 1.0:1, so the two limit sets
+would be distinguishable by dash pattern alone. Not put to the user as a choice; flagged in the hand-back. (Comparator is
+still soft-hidden.)
+
+**Verified locally:** all pages 1280px + 320px, 0px overflow, 0 console errors; 89 tests pass. On-page copy that named the
+colour ("lighter-teal dotted segments") updated to navy. Footer credit now "Dashboards developed by Dr João Martins."
+
+## 2026-11-13 — Host-site visual alignment (option 2: everything outside the charts) — BUILT on branch, NOT deployed (Claude session; design choice by user)
+
+**Host tokens were READ from the live surgicaldatapolicy.org (computed styles, 2026-11-13), not assumed.** The brief expected
+serif display headings; the site is actually **IBM Plex Sans throughout** (400/600/700/700 italic; stock Twenty Twenty-Five
+theme with overrides): ink `#141414`, secondary `#4a4a4a`, white base with `#f5f5f2` section bands, navy `#0b1d3a` buttons
+(square corners), magenta `#c2185b` bold-italic heading accent, dark `#141414` footer band, 44px seal + bold site name header.
+
+**What changed (all four pages):** body/headings/controls → self-hosted IBM Plex Sans (`site/assets/fonts`, OFL licence
+included; no third-party requests added); `--ink`/`--ink-soft`/`--line`/`--paper` → host values; square corners; new lab header
+bar (seal + name → main site, "All tools" link) and dark lab footer band, in shared `site/assets/sdpl.css`; `<h1>` gets the
+magenta italic accent phrase. The existing Cancer · RTT · All dashboards strip and the data-source footer are kept.
+
+**Chart palette: UNTOUCHED, and now structurally protected.** `--org` used to be both the chart series colour and the UI
+accent. New tokens `--accent` (navy) and `--accent-2` (magenta) take over every UI use (links, active buttons, card borders,
+checkbox); `--org` is now chart-only. No chart colour changed and no contrast ratio fell. Rules that follow from the numbers:
+- **Charts and cards must stay on `--panel` #fff.** On the `#f5f5f2` page tint `--org-muted` is 2.96:1, `--target` 2.75:1,
+  `--nat` 3.04:1, `--target-text` 4.50:1 (on white: 3.23 / 3.00 / 3.32 / 4.91). The tint is page background only.
+- Navy as link/button colour: 16.79:1 on white, 15.37:1 on the tint. Magenta: 5.87:1 / 5.38:1, headings and focus ring only,
+  never a data state (near-identical lightness to `--bad`).
+- Link underlines kept (1.4.1) although the host's own body links have none.
+- Modal: the lab bar and footer band sit outside `.wrap`, so open/close now sets `inert` + `aria-hidden` on them too.
+
+**Deliberately NOT done (would be "option 3"):** text inside charts, legends and tooltips stays monospace; no label-fit
+re-work. Export (PNG/SVG) title font string changed to Plex with Helvetica/Arial fallback; the font is not embedded, so
+exports opened elsewhere render the title in the fallback sans.
+
+**Verified locally (headless Chromium, real committed data):** all pages at 1280px and 320px: 0px horizontal overflow,
+0 console errors, all four Plex faces load, chart panels compute to pure white, svg text still monospace, footers read
+"Data to September 2026. Last updated 12 November 2026." 89 tests pass.
+
+**Seal + credit:** `site/assets/sdpl-seal.png` made from the image the user supplied; footer band credits "Dashboards developed by Dr João Martins."
+
+## 2026-11-13 — UN-MOTHBALLED: paused-note lever removed entirely — BUILT on branch, NOT deployed (Claude session; decision by user)
+
+The dashboards update again via the local scheduled refresh (2026-11-12, commits 8c03e12 / fed0db0 / 1471663), so the
+mothball is over. **Finding:** footer dates were never pinned (always `meta.months[-1]` / `meta.built_at`); the live "Automatic
+updates are currently paused" text is a stale `updates_paused: true` in the LIVE `meta.json` files, stamped by the 12 Nov
+publish about an hour before fed0db0 made the stamp opt-in. The committed `meta.json` files do not carry it; one publish
+run clears it. **Decision (user): remove the lever entirely**, not leave it dormant (this supersedes the opt-in `paused_note`
+input added in fed0db0). Removed: `pipeline_common/freeze_note.py`; workflow `paused_note` input + stamp step; footer
+conditionals in cancer/RTT/compare; landing `#paused` element + script; the two stamp tests (file renamed
+`tests/test_publish_path.py`, the two `--no-fetch` tests kept). **Kept, because they are now the live architecture, not
+mothball artefacts:** `skip_fetch` (default true), `pipeline.run --no-fetch`, the commented-out cron, committed RTT breakdown
+files. **Accepted consequence:** if the local refresh stops there is no on-page signal (see STATUS "Known risk").
+
 ## 2026-10-07 — Mothball DEPLOYED + LIVE-VERIFIED via the new manual lever (run 37625493430, commit 3ab1844) (Claude Code)
 
 User approved the three extras (commit the 651 RTT breakdown files + `.gitignore` change; delete `site/rtt/index 2.html`; keep

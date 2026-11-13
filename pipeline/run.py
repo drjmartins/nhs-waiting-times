@@ -3,7 +3,7 @@ Pipeline entry point.
 
 Usage:
   python -m pipeline.run            # real run: scrape NHS, fetch new files, rebuild
-  python -m pipeline.run --synthetic # offline demo run with fabricated data
+  python -m pipeline.run --no-fetch # publish path: rebuild from the committed store only
 
 The real run is idempotent and cheap: it only downloads/parses files that are
 new or revised since the last run (per the manifest), then rebuilds the site
@@ -19,11 +19,7 @@ import pandas as pd
 from . import config, discover, normalise, build_site_data
 from pipeline_common import ods
 
-# Real and synthetic runs MUST use separate stores. They previously shared
-# tidy.parquet, so a `--synthetic` dev run would seed the next real run and
-# fabricated rows would be merged into genuine NHS data.
 TIDY_STORE = os.path.join(config.PROCESSED_DIR, "tidy.parquet")
-SYNTHETIC_STORE = os.path.join(config.PROCESSED_DIR, "tidy_synthetic.parquet")
 
 
 def _load_store(path=TIDY_STORE):
@@ -125,7 +121,7 @@ def _gate_and_build(store, ods_data=None):
                            "cache both empty) — refusing to build a provider-type split that would "
                            "mis-show every provider under the NHS-Trusts default.")
     # Always rebuild the site from the current store, even on a no-op fetch:
-    # the download slices and comparison JSONs are build artefacts (gitignored,
+    # the download slices and breakdown files are build artefacts (gitignored,
     # not in the checkout), so the Pages artefact would otherwise ship without
     # them on any run that found no new data.
     return build_site_data.build(store, classification=ods_data["orgs"],
@@ -133,11 +129,11 @@ def _gate_and_build(store, ods_data=None):
 
 
 def run_offline():
-    """Publish path for the mothballed site: rebuild from the COMMITTED store only.
+    """Publish path (the workflow's skip_fetch run): rebuild from the COMMITTED store only.
 
     Never contacts england.nhs.uk (the Actions-egress block) and never goes to ODS
-    either — it uses the committed ODS cache, so the frozen snapshot's org status
-    can't drift and there is no network dependency at all. Every gate still runs.
+    either — it uses the committed ODS cache, so the published org status matches
+    what the local refresh committed and there is no network dependency at all. Every gate still runs.
     `built_at` is carried over from the existing meta.json, so the footer's "Last
     updated" keeps naming when the DATA was refreshed, not the day it was re-deployed.
     """
@@ -160,29 +156,14 @@ def run_offline():
           f"{len(meta['months'])} months (last {meta['months'][-1]}).")
 
 
-def run_synthetic():
-    from . import synthetic
-    raw = synthetic.generate(start="2023-10", n_months=18)
-    tidy = normalise.normalise(raw, "synthetic_combined.csv", "provisional")
-    months = sorted(tidy.month.unique())
-    tidy.loc[tidy.month.isin(months[:-2]), "data_status"] = "final"
-    _save_store(tidy, SYNTHETIC_STORE)
-    meta = build_site_data.build(tidy)
-    print(f"[synthetic] Built {meta['n_orgs']} orgs, {len(meta['months'])} months.")
-
-
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--synthetic", action="store_true")
     ap.add_argument("--no-fetch", action="store_true",
                     help="rebuild from the committed store without contacting NHS/ODS "
-                         "(the mothball publish path)")
+                         "(the publish path)")
     args = ap.parse_args()
-    if args.synthetic:
-        run_synthetic()
-    else:
-        try:
-            run_offline() if args.no_fetch else run_real()
-        except Exception as e:
-            print(f"Real run failed ({e}).", file=sys.stderr)
-            sys.exit(1)
+    try:
+        run_offline() if args.no_fetch else run_real()
+    except Exception as e:
+        print(f"Real run failed ({e}).", file=sys.stderr)
+        sys.exit(1)

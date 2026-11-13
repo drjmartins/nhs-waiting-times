@@ -4,16 +4,27 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NHS Cancer Waiting Times Dashboard</title>
+<link rel="stylesheet" href="../assets/sdpl.css?v=1">
 <style>
   :root{
-    /* Clinical chart-paper palette: cool slate ink, a single signal-amber for
-       the target line, restrained teal for the org series. */
-    --ink:#11202b; --ink-soft:#4a5a64; --line:#d7e0e3; --paper:#fbfcfc;
-    --panel:#ffffff; --org:#0f7d8c; --org-muted:#4f9aa6; --nat:#838f95; --target:#c8881d;
+    /* Clinical chart-paper palette: host-site ink, a single magenta for
+       the target line, restrained navy for the org series. */
+    --ink:#141414; --ink-soft:#4a4a4a; --line:#d6d6d1; --paper:#f5f5f2;
+    --panel:#ffffff; --org:#0b1d3a; --org-muted:#6f84ad; --nat:#868686; --target:#c2185b;
     --good:#2f7d4f; --bad:#b23b3b; --grid:#eef3f4;
-    /* Text-label tone for the amber target, decoupled from the (deliberately faint)
+    /* Text-label tone for the target; was decoupled from a (then deliberately faint) amber
        --target LINE so the label clears 4.5:1 while the line stays faint. */
-    --target-text:#9a6600;
+    --target-text:#c2185b;
+    /* Chart palette re-aligned to the host site 2026-11-13 (user-approved "option B", see DECISIONS):
+       navy series, lighter navy for provisional/low-reliability, neutral grey England, magenta
+       target line + labels. On the white panel: --org 16.79:1, --org-muted 3.76:1, --nat 3.64:1,
+       --target/--target-text 5.87:1. --note keeps the amber for the banner borders. */
+    --note:#c8881d;
+    /* Host-site UI accents (surgicaldatapolicy.org): navy for links/buttons/active states,
+       magenta for the heading accent only. Kept SEPARATE from --org, which is now the
+       chart series colour only, so restyling the UI can never touch the AA-tuned charts.
+       --paper (#f5f5f2) is the page tint: charts and cards must stay on --panel (#fff). */
+    --accent:#0b1d3a; --accent-2:#c2185b;
   }
   *{box-sizing:border-box}
   /* Visually-hidden (screen-reader-only): the data-table alternative to each chart
@@ -24,43 +35,37 @@
      focusable for keyboard tooltip access). */
   .pt.hit:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
   body{margin:0;background:var(--paper);color:var(--ink);
-    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    font-family:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;
     line-height:1.5}
   .wrap{max-width:1040px;margin:0 auto;padding:32px 24px 80px}
   header{border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:8px}
   h1{font-size:30px;margin:0 0 2px;letter-spacing:-.01em}
-  .sub{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:12px;
+  .sub{font-family:inherit;font-size:12px;
     text-transform:uppercase;letter-spacing:.14em;color:var(--ink-soft)}
   .controls{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;
     margin:22px 0 10px}
-  label{display:block;font-family:ui-monospace,Menlo,monospace;font-size:11px;
+  label{display:block;font-family:inherit;font-size:11px;
     text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft);margin-bottom:5px}
   select,input[type=search]{font:inherit;font-size:15px;padding:8px 10px;
-    border:1px solid var(--line);border-radius:5px;background:#fff;min-width:min(360px,100%);max-width:100%}
+    border:1px solid var(--line);border-radius:0;background:#fff;min-width:min(360px,100%);max-width:100%}
   .orgname{font-size:13px;color:var(--ink-soft);display:inline-block;margin:0 0 0 12px;vertical-align:middle}
   /* Empty byline (England, or a region-less provider) generates no inline box, so
      the .orgrow collapses to zero height instead of leaving a blank line. */
   .orgname:empty{display:none}
   .orgname b{color:var(--ink)}
-  /* SOFT-HIDE the provider comparator (compare.html) while it is being iterated.
-     compare.html stays live at its URL (direct links still work); it is just not
-     reachable by clicking. Covers BOTH the header "Compare Providers" link and the
-     per-org "Compare this trust" link, so they re-surface together. To UN-HIDE the
-     comparator everywhere, delete this one rule. */
-  .compare-soft-hidden{display:none !important}
   /* Shared dashboard nav strip — identical structure/grammar on landing, /cancer/
      and /rtt/. The current page is non-link marked text (aria-current="page"). */
-  .dashnav{font-family:ui-monospace,Menlo,monospace;font-size:12px;margin-top:8px}
-  .dashnav a{color:var(--org);text-decoration:underline}
+  .dashnav{font-family:inherit;font-size:12px;margin-top:8px}
+  .dashnav a{color:var(--accent);text-decoration:underline}
   .dashnav .current{color:var(--ink);font-weight:bold}
   .dashnav .sep{color:var(--line);margin:0 8px}
   /* Org type buttons (National / Providers / Commissioners) */
-  .typebtns{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-bottom:8px}
+  .typebtns{display:inline-flex;border:1px solid var(--line);border-radius:0;overflow:hidden;margin-bottom:8px}
   .typebtn{font:inherit;font-size:13.5px;padding:7px 15px;border:0;border-right:1px solid var(--line);
     background:#fff;cursor:pointer;color:var(--ink-soft)}
   .typebtn:last-child{border-right:0}
   .typebtn:hover{background:var(--grid)}
-  .typebtn.active{background:var(--org);color:#fff}
+  .typebtn.active{background:var(--accent);color:#fff}
   /* Provider-type sub-filter (Providers view only) — between the type buttons and the dropdown. */
   .ptyperow{margin:0 0 6px}
   .ptyperow[hidden]{display:none}
@@ -71,55 +76,55 @@
   /* In-panel search box for the searchable dropdowns (scoped to beat the global
      input[type=search] min-width so it fits the panel). */
   .filterpanel .dropsearch{display:block;width:100%;min-width:0;font:inherit;font-size:14px;padding:7px 9px;
-    margin-bottom:6px;border:1px solid var(--line);border-radius:5px}
-  .note{background:#fff7e8;border:1px solid #f0dcae;border-left:3px solid var(--target);
-    padding:10px 13px;font-size:13.5px;color:#6b561f;border-radius:0 4px 4px 0;margin:14px 0 22px}
+    margin-bottom:6px;border:1px solid var(--line);border-radius:0}
+  .note{background:#fff7e8;border:1px solid #f0dcae;border-left:3px solid var(--note);
+    padding:10px 13px;font-size:13.5px;color:#6b561f;border-radius:0;margin:14px 0 22px}
   /* Contextual org-lifecycle note (former/newly-formed) — neutral, distinct from the amber break note. */
-  .orgnote{background:var(--grid);border:1px solid var(--line);border-left:3px solid var(--org);
-    padding:9px 12px;font-size:13px;color:var(--ink-soft);border-radius:0 4px 4px 0;margin:2px 0 16px}
+  .orgnote{background:var(--grid);border:1px solid var(--line);border-left:3px solid var(--accent);
+    padding:9px 12px;font-size:13px;color:var(--ink-soft);border-radius:0;margin:2px 0 16px}
   .orgnote[hidden]{display:none}
   .orgnote b{color:var(--ink)}
-  .orgnote .rellink{background:none;border:0;padding:0;font:inherit;color:var(--org);
+  .orgnote .rellink{background:none;border:0;padding:0;font:inherit;color:var(--accent);
     text-decoration:underline;cursor:pointer}
-  .orgnote .rellink:hover{color:var(--org-strong,var(--org))}
+  .orgnote .rellink:hover{color:var(--accent)}
 
   /* Shared cancer-group selector (drives all three cards + the big chart) */
   .groupbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 16px}
-  .groupbar .flabel{font-family:ui-monospace,Menlo,monospace;font-size:11px;
+  .groupbar .flabel{font-family:inherit;font-size:11px;
     text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft)}
   .groupbar .filterbtn{min-width:240px}
-  .groupbar .filterbtn.grouped{border-color:var(--org);color:var(--org);font-weight:600;
-    box-shadow:0 1px 6px rgba(15,125,140,.10)}
+  .groupbar .filterbtn.grouped{border-color:var(--accent);color:var(--accent);font-weight:600;
+    box-shadow:0 1px 6px rgba(11,29,58,.10)}
 
   /* Three summary cards = the standard switcher */
   .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:0 0 22px}
   @media(max-width:780px){.cards{grid-template-columns:1fr}}
-  .scard{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  .scard{background:var(--panel);border:1px solid var(--line);border-radius:0;
     padding:13px 15px 11px;cursor:pointer;position:relative;
     transition:border-color .12s,box-shadow .12s;border-top:3px solid var(--line)}
-  .scard:hover{border-color:#bcccd1}
-  .scard.active{border-top-color:var(--org);box-shadow:0 1px 0 var(--org) inset, 0 2px 10px rgba(15,125,140,.10)}
+  .scard:hover{border-color:#a9a9a3}
+  .scard.active{border-top-color:var(--accent);box-shadow:0 1px 0 var(--accent) inset, 0 2px 10px rgba(11,29,58,.10)}
   .scard h3{margin:0;font-size:14.5px;letter-spacing:-.005em}
-  .scard .stdcode{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;
+  .scard .stdcode{font-family:inherit;font-size:10.5px;
     text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft)}
   .scard .figure{display:flex;align-items:baseline;gap:8px;margin:6px 0 2px}
   .scard .figure b{font-size:27px;font-weight:600;letter-spacing:-.02em;line-height:1;
     color:var(--ink);font-family:inherit}
-  .scard .figure .vs{font-size:11px;color:var(--ink-soft);font-family:ui-monospace,Menlo,monospace}
+  .scard .figure .vs{font-size:11px;color:var(--ink-soft);font-family:inherit}
   .scard .figure .vs.meets{color:var(--good)} .scard .figure .vs.under{color:var(--target-text)}
   .scard .spark{margin-top:6px}
-  .scard .mon{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:var(--ink-soft);margin-top:3px}
+  .scard .mon{font-family:inherit;font-size:10.5px;color:var(--ink-soft);margin-top:3px}
   .scard .mon .lowtag{color:#8a6d1f}                 /* n<10 caveat, matches low-reliability hue */
   .scard.nodata{opacity:.72}
   .scard .figure b.muted{color:var(--ink)}     /* low-reliability latest figure kept dark-ink for contrast; the n<10 caveat + muted sparkline carry the de-emphasis */
   .scard .nogroup{font-size:13px;color:var(--ink-soft);margin:10px 0 8px}
 
   /* Big chart panel */
-  .bigpanel{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  .bigpanel{background:var(--panel);border:1px solid var(--line);border-radius:0;
     padding:16px 18px 12px;position:relative}
   .bigpanel .ttl{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 6px}
   .bigpanel .ttl h2{margin:0;font-size:18px;letter-spacing:-.01em}
-  .bigpanel .ttl .tag{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--ink-soft)}
+  .bigpanel .ttl .tag{font-family:inherit;font-size:11px;color:var(--ink-soft)}
   /* Legend: single line — org series + its uncertain states, a "|" boundary, then the
      reference lines. Wraps gracefully on narrow widths; one line at normal width. */
   .legend{display:flex;flex-wrap:wrap;align-items:center;gap:7px;
@@ -133,7 +138,7 @@
   .pt{cursor:pointer}
   /* Anchored tooltip */
   .tip{position:absolute;z-index:5;transform:translate(-50%,-118%);pointer-events:none;
-    background:var(--ink);color:#fff;border-radius:6px;padding:7px 10px;
+    background:var(--ink);color:#fff;border-radius:0;padding:7px 10px;
     font-family:ui-monospace,Menlo,monospace;font-size:11.5px;line-height:1.45;
     white-space:nowrap;box-shadow:0 3px 12px rgba(17,32,43,.25);display:none}
   .tip .pct{font-size:14px;font-weight:600}
@@ -144,36 +149,36 @@
 
   /* Breakdown filter (custom dropdown so options are in-DOM + reviewable) */
   .filterbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:2px 0 8px}
-  .filterbar .flabel{font-family:ui-monospace,Menlo,monospace;font-size:11px;
+  .filterbar .flabel{font-family:inherit;font-size:11px;
     text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft)}
   .fgrp{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
   .fgrp[hidden]{display:none}
   .fdrop{position:relative}
   .filterbtn{font:inherit;font-size:14px;padding:6px 12px;border:1px solid var(--line);
-    border-radius:5px;background:#fff;cursor:pointer;color:var(--ink);min-width:200px;text-align:left}
-  .filterbtn:hover{border-color:#bcccd1}
+    border-radius:0;background:#fff;cursor:pointer;color:var(--ink);min-width:200px;text-align:left}
+  .filterbtn:hover{border-color:#a9a9a3}
   .filterbtn .caret{float:right;color:var(--ink-soft);margin-left:8px}
   .filterpanel{position:absolute;z-index:8;top:calc(100% + 4px);left:0;
     min-width:min(280px,calc(100vw - 32px));max-width:min(340px,calc(100vw - 32px));
-    max-height:340px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:6px;
+    max-height:340px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:0;
     box-shadow:0 6px 22px rgba(17,32,43,.16);padding:6px}
   .filterpanel[hidden]{display:none}
-  .fgroup{font-family:ui-monospace,Menlo,monospace;font-size:10px;text-transform:uppercase;
+  .fgroup{font-family:inherit;font-size:10px;text-transform:uppercase;
     letter-spacing:.1em;color:var(--ink-soft);padding:8px 8px 3px;border-top:1px solid var(--grid);margin-top:4px}
   .fgroup.first{border-top:0;margin-top:0}
   .fopt{display:block;width:100%;text-align:left;font:inherit;font-size:13.5px;padding:5px 8px;
-    border:0;background:none;border-radius:4px;cursor:pointer;color:var(--ink)}
+    border:0;background:none;border-radius:0;cursor:pointer;color:var(--ink)}
   .fopt:hover{background:var(--grid)}
-  .fopt.active{background:rgba(15,125,140,.10);color:var(--org);font-weight:600}
+  .fopt.active{background:rgba(11,29,58,.10);color:var(--accent);font-weight:600}
   .slicehint{font-size:12px;color:var(--ink-soft)}
   .lowrel{font-size:12.5px;color:#6b561f;background:#fff7e8;border:1px solid #f0dcae;
-    border-left:3px solid var(--target);border-radius:0 4px 4px 0;padding:7px 11px;margin:8px 0 2px}
+    border-left:3px solid var(--note);border-radius:0;padding:7px 11px;margin:8px 0 2px}
   .lowrel[hidden]{display:none}
   .emptyslice{padding:40px 10px;text-align:center;color:var(--ink-soft);font-size:14px}
 
   footer{margin-top:42px;border-top:1px solid var(--line);padding-top:16px;
     font-size:12.5px;color:var(--ink-soft)}
-  a{color:var(--org)}
+  a{color:var(--accent)}
   svg text{font-family:ui-monospace,Menlo,monospace}
 
   /* Chart toolbar (Expand + Download) — lives inside .ttl so it travels with the
@@ -181,8 +186,8 @@
      on-screen state regardless of which view is active. */
   .charttools{margin-left:auto;display:inline-flex;gap:8px;align-items:center}
   .toolbtn{font:inherit;font-size:12.5px;padding:5px 11px;border:1px solid var(--line);
-    border-radius:5px;background:#fff;cursor:pointer;color:var(--ink-soft);white-space:nowrap}
-  .toolbtn:hover{border-color:#bcccd1;color:var(--ink)}
+    border-radius:0;background:#fff;cursor:pointer;color:var(--ink-soft);white-space:nowrap}
+  .toolbtn:hover{border-color:#a9a9a3;color:var(--ink)}
   .dlmenu{left:auto;right:0;min-width:160px}
   .dlmenu .fopt{font-size:13.5px}
 
@@ -193,41 +198,49 @@
   .modal[hidden]{display:none}
   .modal-backdrop{position:absolute;inset:0;background:rgba(17,32,43,.55)}
   .modal-inner{position:relative;margin:auto;width:min(1240px,96vw);max-height:95vh;
-    overflow:auto;background:var(--paper);border-radius:10px;
+    overflow:auto;background:var(--paper);border-radius:0;
     box-shadow:0 14px 54px rgba(17,32,43,.42);padding:16px}
   .modal-close{position:absolute;top:12px;right:14px;z-index:2;font-size:17px;line-height:1;
-    border:1px solid var(--line);background:#fff;border-radius:6px;padding:6px 10px;
+    border:1px solid var(--line);background:#fff;border-radius:0;padding:6px 10px;
     cursor:pointer;color:var(--ink-soft)}
-  .modal-close:hover{color:var(--ink);border-color:#bcccd1}
+  .modal-close:hover{color:var(--ink);border-color:#a9a9a3}
   .modal-host .bigpanel{border:0;padding:8px 6px 4px}
 
   /* Time-range presets: a compact segmented control, right-aligned in the filterbar. */
   .rangewrap{margin-left:auto;display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
-  .rangebtns{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .rangebtns{display:inline-flex;border:1px solid var(--line);border-radius:0;overflow:hidden}
   .rangebtn{font:inherit;font-size:12.5px;padding:5px 11px;border:0;border-right:1px solid var(--line);
     background:#fff;cursor:pointer;color:var(--ink-soft);white-space:nowrap}
   .rangebtn:last-child{border-right:0}
   .rangebtn:hover{background:var(--grid)}
-  .rangebtn.active{background:var(--org);color:#fff}
+  .rangebtn.active{background:var(--accent);color:#fff}
 
   /* "Show England" toggle — overrides the global uppercase/block label defaults. */
   .engtoggle{display:inline-flex;align-items:center;gap:6px;margin:0;cursor:pointer;
     font:inherit;font-size:13px;text-transform:none;letter-spacing:0;color:var(--ink)}
-  .engtoggle input{margin:0;cursor:pointer;accent-color:var(--org)}
+  .engtoggle input{margin:0;cursor:pointer;accent-color:var(--accent)}
+  /* Host alignment: the former monospace UI labels are now Plex Sans; tighten the
+     tracking that was tuned for monospace. Chart text (svg, legend, tooltip) stays mono. */
+  .sub,label,.flabel,.fgroup,.go{font-weight:600;letter-spacing:.07em}
+  .dashnav,header nav{font-size:13.5px;font-weight:600}
+  .wrap{padding-top:28px;padding-bottom:56px}
 </style>
 </head>
 <body>
+<header class="sitebar">
+  <div class="sitebar-in">
+    <a class="brand" href="https://surgicaldatapolicy.org/"><img src="../assets/sdpl-seal.png" alt="" width="44" height="44"><span>Surgical Data and Policy Lab</span></a>
+    <nav class="sitelinks" aria-label="Surgical Data and Policy Lab"><a href="https://surgicaldatapolicy.org/tools/">All tools</a></nav>
+  </div>
+</header>
 <div class="wrap">
   <header>
-    <h1>NHS Cancer Waiting Times Dashboard</h1>
+    <h1>NHS <em>Cancer Waiting Times</em> Dashboard</h1>
     <div class="sub">England &middot; Performance against NHS Cancer Waiting Time Targets</div>
     <nav class="dashnav" aria-label="Dashboards">
       <span class="current" aria-current="page">Cancer</span><span class="sep">&middot;</span>
       <a href="../rtt/">RTT</a><span class="sep">&middot;</span>
-      <a href="../">All dashboards</a><!--
-      Comparator entry: soft-hidden alongside the per-org "Compare this trust" link
-      (same .compare-soft-hidden class). Delete that one CSS rule to un-hide both.
-   --><span class="compare-soft-hidden"><span class="sep">&middot;</span><a href="compare.html">Compare Providers (Beta) &rarr;</a></span>
+      <a href="../">All dashboards</a>
     </nav>
   </header>
 
@@ -261,13 +274,6 @@
           </div>
         </div>
         <div class="orgname" id="orgname"></div>
-        <!-- "Compare this trust" deep-link into the comparator with this org
-             pre-selected. Soft-hidden alongside the header comparator link (same
-             .compare-soft-hidden class) while the comparator is being iterated;
-             JS keeps it provider-only and sets its href. Un-hides with the rest. -->
-        <a id="comparelink" class="compare-soft-hidden orgcompare"
-           style="font-size:12px;font-family:ui-monospace,Menlo,monospace;color:var(--org);text-decoration:none;margin-left:12px;vertical-align:middle"
-           href="compare.html" hidden>Compare this trust &rarr;</a>
       </div>
     </div>
   </div>
@@ -345,6 +351,12 @@
 
   <footer id="foot"></footer>
 </div>
+<footer class="sitefoot">
+  <div class="sitefoot-in">
+    <div><b>Surgical Data and Policy Lab</b><p>Dashboards developed by Dr João Martins.</p></div>
+    <nav aria-label="Lab links"><a href="https://surgicaldatapolicy.org/">surgicaldatapolicy.org</a><a href="https://surgicaldatapolicy.org/tools/">All tools</a></nav>
+  </div>
+</footer>
 
 <!-- Expand overlay. The .bigpanel is moved into #modalhost on open and restored on
      close (see openModal/closeModal), so the expanded chart IS the live chart —
@@ -420,7 +432,7 @@ const isoDate = iso => {const[y,m,d]=iso.slice(0,10).split("-");return (+d)+" "+
 function footerHTML(META){
   const latest=fullMonth(META.months[META.months.length-1]), built=isoDate(META.built_at);
   return `Data source: <a href="https://www.england.nhs.uk/statistics/statistical-work-areas/cancer-waiting-times/" target="_blank" rel="noopener">NHS England Cancer Waiting Times statistics</a>, published monthly and used here under the Open Government Licence v3.0. This dashboard is an independent tool and is not affiliated with or endorsed by NHS England.<br><br>`+
-    `Data to ${latest}. Last updated ${built}.${META.updates_paused?" Automatic updates are currently paused.":""} Figures for the most recent months are provisional and subject to revision.<br><br>`+
+    `Data to ${latest}. Last updated ${built}. Figures for the most recent months are provisional and subject to revision.<br><br>`+
     // Transparency note for the picker hiding (see build_site_data._negligible_orgs).
     `Organisations with very little recent activity (for providers, no standard reaching at least 10 patients in a single month over the last year; for commissioners, very low recent total volume) are hidden.`;
   // (The Oct-2023 comparability note now lives in the amber banner below the chart
@@ -669,19 +681,6 @@ function renderOrgNote(code){
   box.innerHTML=msg; box.hidden=false;
 }
 
-// "Compare this trust" deep-link: comparison is trust-level, so show it only for a
-// selected provider (never National / ICB) and carry the org + current standard into
-// the comparator (compare.html reads ?org= to scope + highlight that trust). The
-// .compare-soft-hidden class still hides it globally while the comparator is hidden;
-// this 'hidden' attribute is what gates it to providers once that class is removed.
-function syncCompareLink(){
-  const a=document.getElementById("comparelink"); if(!a) return;
-  const isProvider = !CURRENT.isNational && CURRENT.level==="provider";
-  a.hidden = !isProvider;
-  if(isProvider)
-    a.href = "compare.html?org="+encodeURIComponent(CURRENT.code)+"&std="+encodeURIComponent(CURRENT_STD);
-}
-
 function render(){
   // If the org we switched to lacks the kept standard, fall back sensibly.
   if(!CURRENT.standards[CURRENT_STD])
@@ -693,7 +692,6 @@ function render(){
   document.getElementById("orgname").textContent = CURRENT.isNational
     ? ""
     : (CURRENT.region && CURRENT.region!=="England" ? CURRENT.region : "");
-  syncCompareLink();
   closePanel(); closeModPanel(); updateGroupLabel();
   renderCards();
   renderBig();   // calls syncBreakdownUI() to sync the route/modality controls
@@ -752,10 +750,10 @@ function renderCards(){
 }
 
 // Small recent-trend sparkline (last ~15 months). Amber dashed target rule sits
-// clearly inside the plot (extra headroom), and the latest-point dot turns amber
+// clearly inside the plot (extra headroom), and the latest-point dot turns magenta (--target)
 // when below target so a rising-but-still-short trend can't read as healthy.
 // Group series at one org can be thin/recent: UNCERTAIN months — provisional OR
-// n<THRESH — are drawn in the lighter teal + dashed (matching the big chart's colour
+// n<THRESH — are drawn in the lighter navy + dashed (matching the big chart's colour
 // logic, where both uncertain states share --org-muted), so a thin/provisional group
 // can't read as a confident sparkline. Colour only here — no circle/square markers
 // (the sparkline carries none; too small). A sub-threshold latest point still shows as
@@ -1101,9 +1099,9 @@ function renderBig(){
   // Legend on ONE line, mirroring the chart EXACTLY (line style + marker shape). The
   // org series + its two uncertain states come first, then a "|" boundary, then the
   // reference lines. Labels are organisation-only (the slice is named in the title).
-  // Both uncertain states share the SAME lighter teal (--org-muted) and are told apart
+  // Both uncertain states share the SAME lighter navy (--org-muted) and are told apart
   // ONLY by shape + dash: provisional = open CIRCLE + dashed; low-reliability = open
-  // SQUARE + dotted. Normal/final keeps the strong solid teal + filled circle.
+  // SQUARE + dotted. Normal/final keeps the strong solid navy + filled circle.
   const item = (sw,mk,sq,label)=>`<span class="lgitem">${legendSwatch(sw,mk,sq)}${label}</span>`;
   const org_ = item(`stroke="var(--org)" stroke-width="2.4"`,`fill="var(--org)"`,false,CURRENT.isNational?"England":"this organisation");
   const prov_ = item(`stroke="var(--org-muted)" stroke-width="1.8" stroke-dasharray="6 4" opacity="0.9"`,`fill="#fff" stroke="var(--org-muted)" stroke-width="1.6"`,false,"provisional");
@@ -1122,7 +1120,7 @@ function renderBig(){
   // Sub-threshold months are SHOWN but flagged, not hidden.
   if(hasLow){
     low.hidden=false;
-    low.innerHTML=`&#9633; Open squares (and lighter-teal dotted segments) mark <em>final</em> months with fewer than ${THRESH} patients in scope — part of this organisation's series, but too thin to read as reliable. Months that are also provisional show as provisional instead.`;
+    low.innerHTML=`&#9633; Open squares (and lighter-navy dotted segments) mark <em>final</em> months with fewer than ${THRESH} patients in scope — part of this organisation's series, but too thin to read as reliable. Months that are also provisional show as provisional instead.`;
   } else low.hidden=true;
 
   // Render hook: ?tip=N opens the tooltip on point N (from the end if negative).
@@ -1210,10 +1208,10 @@ function bigSVG(s, nat){
     `<text x="${W-3}" y="${(ty+3.5).toFixed(1)}" font-size="10" text-anchor="end" fill="var(--target-text)">target ${fmt(s.target)}</text>`;
   // national overlay: a faint SOLID grey reference line, aligned by MONTH (robust
   // to slices that skip months). Deliberately solid, NOT dashed: "dashed" is
-  // reserved for the org series' own states (provisional = lighter teal dashed,
-  // low-reliability = muted teal dashed). When an org's series is mostly
-  // provisional its line is almost entirely dashed teal; a dashed grey England
-  // line beside it was near-indistinguishable. Solid grey vs dashed teal separates
+  // reserved for the org series' own states (provisional = lighter navy dashed,
+  // low-reliability = muted navy dashed). When an org's series is mostly
+  // provisional its line is almost entirely dashed navy; a dashed grey England
+  // line beside it was near-indistinguishable. Solid grey vs dashed navy separates
   // them by BOTH colour and dash, even on a heavily-provisional org.
   let natpath="";
   if(nat){
@@ -1225,12 +1223,12 @@ function bigSVG(s, nat){
     if(d) natpath=`<path d="${d.trim()}" fill="none" stroke="var(--nat)" stroke-width="1.6" opacity="0.85"/>`;
   }
   // org series drawn PER SEGMENT so fragility reaches the line, not just markers.
-  // Both uncertain states use the SAME lighter teal (--org-muted) and are told apart
+  // Both uncertain states use the SAME lighter navy (--org-muted) and are told apart
   // by DASH alone; PROVISIONAL WINS over low-reliability (matches the markers):
-  //  - a segment touching a provisional month is lighter-teal DASHED;
-  //  - else a segment touching a sub-threshold month (n<10) is lighter-teal DOTTED (a
+  //  - a segment touching a provisional month is lighter-navy DASHED;
+  //  - else a segment touching a sub-threshold month (n<10) is lighter-navy DOTTED (a
   //    fragile slice should look fragile — same principle as the funnel);
-  //  - otherwise strong solid teal. (All-final, above-threshold => all solid, as before.)
+  //  - otherwise strong solid navy. (All-final, above-threshold => all solid, as before.)
   let line="";
   for(let i=0;i<n-1;i++){
     const provEdge=s.data_status[i]!=="final" || s.data_status[i+1]!=="final";
@@ -1249,11 +1247,11 @@ function bigSVG(s, nat){
   for(let i=0;i<n-guard;i+=lstep) xl+=`<text x="${x(i).toFixed(1)}" y="${H-8}" font-size="10" text-anchor="middle" fill="var(--ink-soft)">${monthLabel(xs[i])}</text>`;
   xl+=`<text x="${x(n-1).toFixed(1)}" y="${H-8}" font-size="10" text-anchor="end" fill="var(--ink-soft)">${monthLabel(xs[n-1])}</text>`;
   // Point markers. Per-point state is MUTUALLY EXCLUSIVE, provisional wins. Both
-  // uncertain states share the SAME lighter teal (--org-muted) outline; shape alone
+  // uncertain states share the SAME lighter navy (--org-muted) outline; shape alone
   // (+ the line dash) carries the distinction:
   //   provisional            => open CIRCLE
   //   low-reliability & final => open SQUARE
-  //   normal final            => filled strong-teal circle
+  //   normal final            => filled strong-navy circle
   // A point that is BOTH provisional and n<10 renders as provisional (circle), never a
   // square — so the square means specifically "final, but too few patients to trust".
   let pts="";
@@ -1354,7 +1352,7 @@ function openModal(){
   document.getElementById("chartmodal").hidden=false;
   document.body.style.overflow="hidden";
   // Hide + de-tab the rest of the page (the dialog content lives outside .wrap).
-  const wrap=document.querySelector(".wrap"); if(wrap){ wrap.setAttribute("aria-hidden","true"); wrap.inert=true; }
+  document.querySelectorAll(".wrap,.sitebar,.sitefoot").forEach(el=>{ el.setAttribute("aria-hidden","true"); el.inert=true; });
   document.addEventListener("keydown", modalTrap, true);
   EXPANDED=true; setExpandLabel(); renderBig();
   setTimeout(()=>{ const c=document.getElementById("modalclose"); if(c) c.focus(); },0);
@@ -1366,7 +1364,7 @@ function closeModal(){
   if(_panelHome) _panelHome.parent.insertBefore(panel, _panelHome.next);
   document.getElementById("chartmodal").hidden=true;
   document.body.style.overflow="";
-  const wrap=document.querySelector(".wrap"); if(wrap){ wrap.removeAttribute("aria-hidden"); wrap.inert=false; }
+  document.querySelectorAll(".wrap,.sitebar,.sitefoot").forEach(el=>{ el.removeAttribute("aria-hidden"); el.inert=false; });
   document.removeEventListener("keydown", modalTrap, true);
   EXPANDED=false; setExpandLabel(); renderBig();
   const eb=document.getElementById("expandbtn"); if(eb) eb.focus();   // return focus to the trigger
@@ -1435,7 +1433,7 @@ function buildExportSVG(){
   // Export subtitle title-cases the ALL-CAPS NHS org name (same humaniser as the
   // filename), preserving NHS/FT/ICB; the on-page .tag stays as published.
   const sub=CURRENT.isNational ? "England" : humanName(CURRENT.name);
-  const serif=`font-family="'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif"`;
+  const serif=`font-family="'IBM Plex Sans','Helvetica Neue',Arial,sans-serif"`;
   const head =
     `<text x="16" y="26" font-size="18" font-weight="600" fill="var(--ink)" ${serif}>${xmlEsc(title)}</text>`+
     `<text x="16" y="44" font-size="12.5" fill="var(--ink-soft)" ${serif}>${xmlEsc(sub)}</text>`+

@@ -4,14 +4,25 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NHS RTT Waiting Times Dashboard</title>
+<link rel="stylesheet" href="../assets/sdpl.css?v=1">
 <style>
   :root{
-    --ink:#11202b; --ink-soft:#4a5a64; --line:#d7e0e3; --paper:#fbfcfc;
-    --panel:#ffffff; --org:#0f7d8c; --org-muted:#4f9aa6; --nat:#838f95; --target:#c8881d;
+    --ink:#141414; --ink-soft:#4a4a4a; --line:#d6d6d1; --paper:#f5f5f2;
+    --panel:#ffffff; --org:#0b1d3a; --org-muted:#6f84ad; --nat:#868686; --target:#c2185b;
     --good:#2f7d4f; --bad:#b23b3b; --grid:#eef3f4; --milestone:#a08a52;
-    /* Text-label tones for the amber target + tan milestones, decoupled from the
+    /* Text-label tones for the target + tan milestones, decoupled from the
        (deliberately faint) LINE colours so the labels clear 4.5:1. */
-    --target-text:#9a6600; --milestone-text:#75632f;
+    --target-text:#c2185b; --milestone-text:#75632f;
+    /* Chart palette re-aligned to the host site 2026-11-13 (user-approved "option B", see DECISIONS):
+       navy series, lighter navy for provisional/low-reliability, neutral grey England, magenta
+       target line + labels. On the white panel: --org 16.79:1, --org-muted 3.76:1, --nat 3.64:1,
+       --target/--target-text 5.87:1. --note keeps the amber for the banner borders. */
+    --note:#c8881d;
+    /* Host-site UI accents (surgicaldatapolicy.org): navy for links/buttons/active states,
+       magenta for the heading accent only. Kept SEPARATE from --org, which is now the
+       chart series colour only, so restyling the UI can never touch the AA-tuned charts.
+       --paper (#f5f5f2) is the page tint: charts and cards must stay on --panel (#fff). */
+    --accent:#0b1d3a; --accent-2:#c2185b;
   }
   *{box-sizing:border-box}
   /* Screen-reader-only: the data-table alternative to each chart + the live region. */
@@ -20,33 +31,33 @@
   /* Keyboard focus ring for the focusable SVG data points. */
   .pt.hit:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
   body{margin:0;background:var(--paper);color:var(--ink);
-    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    font-family:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;
     line-height:1.5}
   .wrap{max-width:1040px;margin:0 auto;padding:32px 24px 80px}
   header{border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:8px}
   h1{font-size:30px;margin:0 0 2px;letter-spacing:-.01em}
-  .sub{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:12px;
+  .sub{font-family:inherit;font-size:12px;
     text-transform:uppercase;letter-spacing:.14em;color:var(--ink-soft)}
   .controls{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin:22px 0 10px}
-  label{display:block;font-family:ui-monospace,Menlo,monospace;font-size:11px;
+  label{display:block;font-family:inherit;font-size:11px;
     text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft);margin-bottom:5px}
   select,input[type=search]{font:inherit;font-size:15px;padding:8px 10px;
-    border:1px solid var(--line);border-radius:5px;background:#fff;min-width:min(360px,100%);max-width:100%}
+    border:1px solid var(--line);border-radius:0;background:#fff;min-width:min(360px,100%);max-width:100%}
   .orgname{font-size:13px;color:var(--ink-soft);display:inline-block;margin:0 0 0 12px;vertical-align:middle}
   .orgname:empty{display:none}
   .orgname b{color:var(--ink)}
   /* Shared dashboard nav strip — identical structure/grammar on landing, /cancer/
      and /rtt/. The current page is non-link marked text (aria-current="page"). */
-  .dashnav{font-family:ui-monospace,Menlo,monospace;font-size:12px;margin-top:8px}
-  .dashnav a{color:var(--org);text-decoration:underline}
+  .dashnav{font-family:inherit;font-size:12px;margin-top:8px}
+  .dashnav a{color:var(--accent);text-decoration:underline}
   .dashnav .current{color:var(--ink);font-weight:bold}
   .dashnav .sep{color:var(--line);margin:0 8px}
-  .typebtns{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-bottom:8px}
+  .typebtns{display:inline-flex;border:1px solid var(--line);border-radius:0;overflow:hidden;margin-bottom:8px}
   .typebtn{font:inherit;font-size:13.5px;padding:7px 15px;border:0;border-right:1px solid var(--line);
     background:#fff;cursor:pointer;color:var(--ink-soft)}
   .typebtn:last-child{border-right:0}
   .typebtn:hover{background:var(--grid)}
-  .typebtn.active{background:var(--org);color:#fff}
+  .typebtn.active{background:var(--accent);color:#fff}
   /* Provider-type sub-filter (Providers view only) — sits between the type buttons and the dropdown. */
   .ptyperow{margin:0 0 6px}
   .ptyperow[hidden]{display:none}
@@ -55,43 +66,43 @@
   .orgbtnwrap .filterbtn{min-width:min(380px,100%);max-width:100%}
   .filterbtn[disabled],.orgbtnwrap[hidden]{display:none}
   .filterpanel .dropsearch{display:block;width:100%;min-width:0;font:inherit;font-size:14px;padding:7px 9px;
-    margin-bottom:6px;border:1px solid var(--line);border-radius:5px}
-  .note{background:#fff7e8;border:1px solid #f0dcae;border-left:3px solid var(--target);
-    padding:10px 13px;font-size:13.5px;color:#6b561f;border-radius:0 4px 4px 0;margin:14px 0 22px}
+    margin-bottom:6px;border:1px solid var(--line);border-radius:0}
+  .note{background:#fff7e8;border:1px solid #f0dcae;border-left:3px solid var(--note);
+    padding:10px 13px;font-size:13.5px;color:#6b561f;border-radius:0;margin:14px 0 22px}
   /* Contextual org-lifecycle note (former/newly-formed) — neutral, distinct from the amber break note. */
-  .orgnote{background:var(--grid);border:1px solid var(--line);border-left:3px solid var(--org);
-    padding:9px 12px;font-size:13px;color:var(--ink-soft);border-radius:0 4px 4px 0;margin:2px 0 18px}
+  .orgnote{background:var(--grid);border:1px solid var(--line);border-left:3px solid var(--accent);
+    padding:9px 12px;font-size:13px;color:var(--ink-soft);border-radius:0;margin:2px 0 18px}
   .orgnote[hidden]{display:none}
   .orgnote b{color:var(--ink)}
-  .orgnote .rellink{background:none;border:0;padding:0;font:inherit;color:var(--org);
+  .orgnote .rellink{background:none;border:0;padding:0;font:inherit;color:var(--accent);
     text-decoration:underline;cursor:pointer}
-  .orgnote .rellink:hover{color:var(--org-strong,var(--org))}
+  .orgnote .rellink:hover{color:var(--accent)}
 
   /* Three summary cards = the MEASURE switcher */
   .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:18px 0 22px}
   @media(max-width:780px){.cards{grid-template-columns:1fr}}
-  .scard{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  .scard{background:var(--panel);border:1px solid var(--line);border-radius:0;
     padding:13px 15px 11px;cursor:pointer;position:relative;
     transition:border-color .12s,box-shadow .12s;border-top:3px solid var(--line)}
-  .scard:hover{border-color:#bcccd1}
-  .scard.active{border-top-color:var(--org);box-shadow:0 1px 0 var(--org) inset, 0 2px 10px rgba(15,125,140,.10)}
+  .scard:hover{border-color:#a9a9a3}
+  .scard.active{border-top-color:var(--accent);box-shadow:0 1px 0 var(--accent) inset, 0 2px 10px rgba(11,29,58,.10)}
   .scard h3{margin:0;font-size:14.5px;letter-spacing:-.005em}
-  .scard .stdcode{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;
+  .scard .stdcode{font-family:inherit;font-size:10.5px;
     text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft)}
   .scard .figure{display:flex;align-items:baseline;gap:8px;margin:6px 0 2px}
   .scard .figure b{font-size:27px;font-weight:600;letter-spacing:-.02em;line-height:1;color:var(--ink);font-family:inherit}
-  .scard .figure .vs{font-size:11px;color:var(--ink-soft);font-family:ui-monospace,Menlo,monospace}
+  .scard .figure .vs{font-size:11px;color:var(--ink-soft);font-family:inherit}
   .scard .figure .vs.meets{color:var(--good)} .scard .figure .vs.under{color:var(--target-text)}
   .scard .spark{margin-top:6px}
-  .scard .mon{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:var(--ink-soft);margin-top:3px}
+  .scard .mon{font-family:inherit;font-size:10.5px;color:var(--ink-soft);margin-top:3px}
   .scard.nodata{opacity:.72}
 
   /* Big chart panel */
-  .bigpanel{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  .bigpanel{background:var(--panel);border:1px solid var(--line);border-radius:0;
     padding:16px 18px 12px;position:relative}
   .bigpanel .ttl{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 6px}
   .bigpanel .ttl h2{margin:0;font-size:18px;letter-spacing:-.01em}
-  .bigpanel .ttl .tag{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--ink-soft)}
+  .bigpanel .ttl .tag{font-family:inherit;font-size:11px;color:var(--ink-soft)}
   .legend{display:flex;flex-wrap:wrap;align-items:center;gap:7px;
     font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--ink-soft);margin:2px 0 4px}
   .legend .lgitem{display:inline-flex;align-items:center;white-space:nowrap}
@@ -101,7 +112,7 @@
   .chartbox svg{display:block;width:100%;height:auto}
   .pt{cursor:pointer}
   .tip{position:absolute;z-index:5;transform:translate(-50%,-118%);pointer-events:none;
-    background:var(--ink);color:#fff;border-radius:6px;padding:7px 10px;
+    background:var(--ink);color:#fff;border-radius:0;padding:7px 10px;
     font-family:ui-monospace,Menlo,monospace;font-size:11.5px;line-height:1.45;
     white-space:nowrap;box-shadow:0 3px 12px rgba(17,32,43,.25);display:none}
   .tip .pct{font-size:14px;font-weight:600}
@@ -111,39 +122,39 @@
     border:5px solid transparent;border-top-color:var(--ink)}
 
   .filterbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:2px 0 8px}
-  .filterbar .flabel{font-family:ui-monospace,Menlo,monospace;font-size:11px;
+  .filterbar .flabel{font-family:inherit;font-size:11px;
     text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft)}
   .fgrp{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
   .fgrp[hidden]{display:none}
   .fdrop{position:relative}
   .filterbtn{font:inherit;font-size:14px;padding:6px 12px;border:1px solid var(--line);
-    border-radius:5px;background:#fff;cursor:pointer;color:var(--ink);min-width:200px;text-align:left}
-  .filterbtn:hover{border-color:#bcccd1}
-  .filterbtn.sliced{border-color:var(--org);color:var(--org);font-weight:600;box-shadow:0 1px 6px rgba(15,125,140,.10)}
+    border-radius:0;background:#fff;cursor:pointer;color:var(--ink);min-width:200px;text-align:left}
+  .filterbtn:hover{border-color:#a9a9a3}
+  .filterbtn.sliced{border-color:var(--accent);color:var(--accent);font-weight:600;box-shadow:0 1px 6px rgba(11,29,58,.10)}
   .filterbtn .caret{float:right;color:var(--ink-soft);margin-left:8px}
   .filterpanel{position:absolute;z-index:8;top:calc(100% + 4px);left:0;
     min-width:min(280px,calc(100vw - 32px));max-width:min(340px,calc(100vw - 32px));
-    max-height:340px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:6px;
+    max-height:340px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:0;
     box-shadow:0 6px 22px rgba(17,32,43,.16);padding:6px}
   .filterpanel[hidden]{display:none}
-  .fgroup{font-family:ui-monospace,Menlo,monospace;font-size:10px;text-transform:uppercase;
+  .fgroup{font-family:inherit;font-size:10px;text-transform:uppercase;
     letter-spacing:.1em;color:var(--ink-soft);padding:8px 8px 3px;border-top:1px solid var(--grid);margin-top:4px}
   .fgroup.first{border-top:0;margin-top:0}
   .fopt{display:block;width:100%;text-align:left;font:inherit;font-size:13.5px;padding:5px 8px;
-    border:0;background:none;border-radius:4px;cursor:pointer;color:var(--ink)}
+    border:0;background:none;border-radius:0;cursor:pointer;color:var(--ink)}
   .fopt:hover{background:var(--grid)}
-  .fopt.active{background:rgba(15,125,140,.10);color:var(--org);font-weight:600}
+  .fopt.active{background:rgba(11,29,58,.10);color:var(--accent);font-weight:600}
   .slicehint{font-size:12px;color:var(--ink-soft)}
   .emptyslice{padding:40px 10px;text-align:center;color:var(--ink-soft);font-size:14px}
 
   footer{margin-top:42px;border-top:1px solid var(--line);padding-top:16px;font-size:12.5px;color:var(--ink-soft)}
-  a{color:var(--org)}
+  a{color:var(--accent)}
   svg text{font-family:ui-monospace,Menlo,monospace}
 
   .charttools{margin-left:auto;display:inline-flex;gap:8px;align-items:center}
   .toolbtn{font:inherit;font-size:12.5px;padding:5px 11px;border:1px solid var(--line);
-    border-radius:5px;background:#fff;cursor:pointer;color:var(--ink-soft);white-space:nowrap}
-  .toolbtn:hover{border-color:#bcccd1;color:var(--ink)}
+    border-radius:0;background:#fff;cursor:pointer;color:var(--ink-soft);white-space:nowrap}
+  .toolbtn:hover{border-color:#a9a9a3;color:var(--ink)}
   .dlmenu{left:auto;right:0;min-width:160px}
   .dlmenu .fopt{font-size:13.5px}
 
@@ -151,29 +162,40 @@
   .modal[hidden]{display:none}
   .modal-backdrop{position:absolute;inset:0;background:rgba(17,32,43,.55)}
   .modal-inner{position:relative;margin:auto;width:min(1240px,96vw);max-height:95vh;
-    overflow:auto;background:var(--paper);border-radius:10px;box-shadow:0 14px 54px rgba(17,32,43,.42);padding:16px}
+    overflow:auto;background:var(--paper);border-radius:0;box-shadow:0 14px 54px rgba(17,32,43,.42);padding:16px}
   .modal-close{position:absolute;top:12px;right:14px;z-index:2;font-size:17px;line-height:1;
-    border:1px solid var(--line);background:#fff;border-radius:6px;padding:6px 10px;cursor:pointer;color:var(--ink-soft)}
-  .modal-close:hover{color:var(--ink);border-color:#bcccd1}
+    border:1px solid var(--line);background:#fff;border-radius:0;padding:6px 10px;cursor:pointer;color:var(--ink-soft)}
+  .modal-close:hover{color:var(--ink);border-color:#a9a9a3}
   .modal-host .bigpanel{border:0;padding:8px 6px 4px}
 
   /* Segmented controls (time range + long-waiter threshold) */
   .rangewrap{margin-left:auto;display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
-  .segbtns{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .segbtns{display:inline-flex;border:1px solid var(--line);border-radius:0;overflow:hidden}
   .segbtn{font:inherit;font-size:12.5px;padding:5px 11px;border:0;border-right:1px solid var(--line);
     background:#fff;cursor:pointer;color:var(--ink-soft);white-space:nowrap}
   .segbtn:last-child{border-right:0}
   .segbtn:hover{background:var(--grid)}
-  .segbtn.active{background:var(--org);color:#fff}
+  .segbtn.active{background:var(--accent);color:#fff}
   .engtoggle{display:inline-flex;align-items:center;gap:6px;margin:0;cursor:pointer;
     font:inherit;font-size:13px;text-transform:none;letter-spacing:0;color:var(--ink)}
-  .engtoggle input{margin:0;cursor:pointer;accent-color:var(--org)}
+  .engtoggle input{margin:0;cursor:pointer;accent-color:var(--accent)}
+  /* Host alignment: the former monospace UI labels are now Plex Sans; tighten the
+     tracking that was tuned for monospace. Chart text (svg, legend, tooltip) stays mono. */
+  .sub,label,.flabel,.fgroup,.go{font-weight:600;letter-spacing:.07em}
+  .dashnav,header nav{font-size:13.5px;font-weight:600}
+  .wrap{padding-top:28px;padding-bottom:56px}
 </style>
 </head>
 <body>
+<header class="sitebar">
+  <div class="sitebar-in">
+    <a class="brand" href="https://surgicaldatapolicy.org/"><img src="../assets/sdpl-seal.png" alt="" width="44" height="44"><span>Surgical Data and Policy Lab</span></a>
+    <nav class="sitelinks" aria-label="Surgical Data and Policy Lab"><a href="https://surgicaldatapolicy.org/tools/">All tools</a></nav>
+  </div>
+</header>
 <div class="wrap">
   <header>
-    <h1>NHS RTT Waiting Times Dashboard</h1>
+    <h1>NHS <em>RTT Waiting Times</em> Dashboard</h1>
     <div class="sub">England &middot; Referral to Treatment &mdash; 18-week waiting times &amp; waiting lists</div>
     <nav class="dashnav" aria-label="Dashboards">
       <a href="../cancer/">Cancer</a><span class="sep">&middot;</span>
@@ -275,6 +297,12 @@
 
   <footer id="foot"></footer>
 </div>
+<footer class="sitefoot">
+  <div class="sitefoot-in">
+    <div><b>Surgical Data and Policy Lab</b><p>Dashboards developed by Dr João Martins.</p></div>
+    <nav aria-label="Lab links"><a href="https://surgicaldatapolicy.org/">surgicaldatapolicy.org</a><a href="https://surgicaldatapolicy.org/tools/">All tools</a></nav>
+  </div>
+</footer>
 
 <div id="chartmodal" class="modal" role="dialog" aria-modal="true" aria-label="Expanded chart" hidden>
   <div class="modal-backdrop" id="modalbackdrop"></div>
@@ -346,7 +374,7 @@ function fmtAxis(v){
 function footerHTML(M){
   const latest=fullMonth(M.months[M.months.length-1]), built=isoDate(M.built_at);
   return `Data source: <a href="https://www.england.nhs.uk/statistics/statistical-work-areas/rtt-waiting-times/" target="_blank" rel="noopener">NHS England Referral to Treatment (RTT) waiting times statistics</a>, published monthly and used here under the Open Government Licence v3.0. This dashboard is an independent tool and is not affiliated with or endorsed by NHS England.<br><br>`+
-    `Data to ${latest}. Last updated ${built}.${M.updates_paused?" Automatic updates are currently paused.":""}<br><br>`+
+    `Data to ${latest}. Last updated ${built}.<br><br>`+
     `Providers with very little recent activity (no month reaching 100 on the waiting list in the past year) are hidden. Non-English-commissioned activity is also excluded.`;
 }
 
@@ -876,7 +904,7 @@ function rateSVG(s,nat,showMs){
     if(d) natpath=`<path d="${d.trim()}" fill="none" stroke="var(--nat)" stroke-width="1.6" opacity="0.85"/>`;
   }
   // Org line per-segment: a segment touching a low-reliability month (n<THRESH —
-  // relevant once a small TF is sliced at a small provider) is lighter-teal dotted.
+  // relevant once a small TF is sliced at a small provider) is lighter-navy dotted.
   let line="";
   for(let i=0;i<n-1;i++){
     const lowEdge=(+s.total[i])<THRESH || (+s.total[i+1])<THRESH;
@@ -1054,7 +1082,7 @@ function openModal(){
   document.getElementById("modalhost").appendChild(panel);
   document.getElementById("chartmodal").hidden=false;
   document.body.style.overflow="hidden";
-  const wrap=document.querySelector(".wrap"); if(wrap){ wrap.setAttribute("aria-hidden","true"); wrap.inert=true; }
+  document.querySelectorAll(".wrap,.sitebar,.sitefoot").forEach(el=>{ el.setAttribute("aria-hidden","true"); el.inert=true; });
   document.addEventListener("keydown", modalTrap, true);
   EXPANDED=true; setExpandLabel(); renderBig();
   setTimeout(()=>{ const c=document.getElementById("modalclose"); if(c) c.focus(); },0);
@@ -1065,7 +1093,7 @@ function closeModal(){
   if(_panelHome) _panelHome.parent.insertBefore(panel, _panelHome.next);
   document.getElementById("chartmodal").hidden=true;
   document.body.style.overflow="";
-  const wrap=document.querySelector(".wrap"); if(wrap){ wrap.removeAttribute("aria-hidden"); wrap.inert=false; }
+  document.querySelectorAll(".wrap,.sitebar,.sitefoot").forEach(el=>{ el.removeAttribute("aria-hidden"); el.inert=false; });
   document.removeEventListener("keydown", modalTrap, true);
   EXPANDED=false; setExpandLabel(); renderBig();
   const eb=document.getElementById("expandbtn"); if(eb) eb.focus();
@@ -1103,7 +1131,7 @@ function buildExportSVG(){
   const {W,H}=BG, headerH=58;
   const title=document.getElementById("bigttl").textContent;
   const sub=CURRENT.isNational ? "England" : humanName(CURRENT.name);
-  const serif=`font-family="'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif"`;
+  const serif=`font-family="'IBM Plex Sans','Helvetica Neue',Arial,sans-serif"`;
   const head=
     `<text x="16" y="26" font-size="18" font-weight="600" fill="var(--ink)" ${serif}>${xmlEsc(title)}</text>`+
     `<text x="16" y="46" font-size="12.5" fill="var(--ink-soft)" ${serif}>${xmlEsc(sub)}</text>`;

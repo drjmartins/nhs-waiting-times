@@ -68,15 +68,6 @@
     "CMB31": "31-day combined (decision-to-treat to treatment)",
     "CMB62": "62-day combined (referral to treatment)"
   },
-  "comparison": {
-    "period_months": [
-      "2026-01",
-      "2026-02",
-      "2026-03"
-    ],
-    "period_label": "Jan\u2013Mar 2026, finalised",
-    "n_measures": 61
-  },
   "downloads": [
     "cwt_tidy_2022-23.csv",
     "cwt_tidy_2023-24.csv",
