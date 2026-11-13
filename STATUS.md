@@ -2,9 +2,15 @@
 
 At-a-glance project state. For the full decision history see `DECISIONS.md`.
 
-_Last updated: 2026-11-13 (Claude session; un-mothball clean-up + host-site visual alignment BUILT on branch `unmothball-and-align`, NOT yet pushed or deployed)._
+_Last updated: 2026-11-13 (Claude session; un-mothball clean-up, host-site visual alignment, comparison-view removal and stale-file clean-up DEPLOYED + LIVE-VERIFIED, merge commit fa31d5d)._
 
 ## Current state (2026-11-13): LIVE and updating again; no longer mothballed
+- **DEPLOYED + LIVE-VERIFIED 2026-11-13** (branch `unmothball-and-align` merged to master as fa31d5d, then a manual publish
+  run, build + deploy green). Live checks: `updates_paused` absent from both live `meta.json` files; landing page has no
+  "paused" text and shows the lab header, new title and footer credit; data to September 2026 (built 12 Nov) on both
+  dashboards; `/cancer/compare.html` no longer served. Bullets below that say "this branch" are now live.
+- **Local working copy (João's Mac):** `~/Claude/NHS Waiting Times Dashboard/nhs-waiting-times`. The old Desktop copy
+  (`cwt-dashboard`) sat in an iCloud-synced folder, which had damaged its git data; do not use it.
 - **Repo:** https://github.com/drjmartins/nhs-waiting-times · **Live:** https://waitingtimes.surgicaldatapolicy.org
   (`/cancer/`, `/rtt/`, landing). Host organisation site: https://surgicaldatapolicy.org (Surgical Data and Policy Lab).
   Older entries below still name the previous repo (`drjmartins/waiting-times`) and `*.github.io` URL; those are historical.
@@ -20,7 +26,7 @@ _Last updated: 2026-11-13 (Claude session; un-mothball clean-up + host-site visu
   `paused_note` input + stamp step, the footer conditionals on cancer/RTT/compare, the landing page's `#paused` line and
   script, and the two stamp tests (`tests/test_mothball.py` → `tests/test_publish_path.py`). Footer
   "Data to {month}. Last updated {date}." was always dynamic from `meta.json` and is unchanged.
-- **The live pages still show "Automatic updates are currently paused" until the next publish run**: the live `meta.json`
+- **(Resolved by the 13 Nov publish.) The live pages showed "Automatic updates are currently paused" until that run**: the live `meta.json`
   files carry a stale `updates_paused: true` stamped by the 12 Nov publish (made before the stamp became opt-in). Any
   publish run clears it (`gh workflow run update-data.yml`).
 - **Visual alignment with surgicaldatapolicy.org (this branch):** page chrome fully aligned AND, by explicit user decision,
@@ -39,8 +45,6 @@ more than N months behind today.
 **If GitHub-side fetching ever works again:** test with `gh workflow run update-data.yml -f skip_fetch=false` (green =
 block cleared), then uncomment `schedule:` and flip the `skip_fetch` default to `false`. The parked AWS Lambda relay
 design is in DECISIONS 2026-09-21.
-
-**Housekeeping flagged, not done:** stray git ref `.git/refs/heads/master 2` on the original laptop clone.
 
 ## (Historical) 2026-10-07 to 2026-11-12: site was MOTHBALLED, frozen at data to July 2026
 Resolved. Full detail in DECISIONS 2026-10-07 (×2); the un-mothball is DECISIONS 2026-11-13.

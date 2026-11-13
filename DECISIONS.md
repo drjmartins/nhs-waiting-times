@@ -6,6 +6,21 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
+## 2026-11-13 — DEPLOYED + LIVE-VERIFIED: un-mothball clean-up, host-site alignment, chart palette, comparison-view removal (merge fa31d5d) (Claude session)
+
+The four entries below went live together. Branch `unmothball-and-align` (the four patch commits plus 6c219b4, which removes
+the tagline "Pushing health research into policy change" from the footer band at the user's request) was merged to master as
+fa31d5d and published with a manual `update-data.yml` run (default `skip_fetch`), build + deploy green. Run number not captured.
+**Live checks (fetched after deploy):** both live `meta.json` files no longer carry `updates_paused`, and cancer's no longer
+carries `comparison`; `built_at` unchanged (12 Nov) and data to 2026-09 on both; landing page text shows the lab header,
+"All tools", the new title, the footer credit "Dashboards developed by Dr João Martins." and no "paused" wording;
+`/cancer/compare.html` is no longer served. Colours, fonts and the seal were checked by the user in a local preview before
+merge, not by an automated visual check on the live site.
+**Local copy moved:** the working clone is now `~/Claude/NHS Waiting Times Dashboard/nhs-waiting-times` (outside iCloud). The
+old `Desktop/Claude/.../cwt-dashboard` clone was in an iCloud-synced folder: its files were cloud-only placeholders and git's
+internals held conflict duplicates (`index 2`, `master 2`), which is where the stray "master 2" ref came from.
+**Still open:** on-page staleness signal if the local scheduled refresh stops (user to discuss with Obafunsho).
+
 ## 2026-11-13 — Comparison view DELETED; stale code and documents removed — BUILT on branch, NOT deployed (Claude session; user decision)
 
 **Comparison view removed entirely (user decision).** It had been soft-hidden since 2026-06-23. Deleted:
