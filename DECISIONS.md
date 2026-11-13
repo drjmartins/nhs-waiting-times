@@ -6,6 +6,30 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
+## 2026-11-13 — FDS28 target: stepped, 75% to March 2026 then 80% from April 2026 — BUILT on branch `fds-80-target`, NOT deployed (Claude session; user decision)
+
+**Why:** NHS England's planning guidance set the 28-day Faster Diagnosis target at 80% ("by March 2026" in the 2025/26
+guidance; "maintain at 80%" in the 2026-29 framework). The PUBLISHED statistical standard is still 75% (CWT statistical
+release, March 2026 data, Annex B: "current standards published in 2023"). Both checked against the sources on 2026-11-13.
+**Options put to the user:** (1) flat 80% everywhere, (2) stepped line, (3) show both lines. **User chose (2)**, so history is
+not re-marked against a target that did not apply at the time.
+**How:** `config.STANDARDS["FDS28"]` now has `target: 0.80` plus `target_schedule: [[None, 0.75], ["2026-04", 0.80]]`
+(generic: any standard can carry a schedule; `config.validate_standards()` fails loudly at import on a malformed one). The
+schedule is emitted into each org/national payload. Front end (`site/cancer/index.html`): `targetAt()` judges each month
+against the target that applied in that month (card label, sparkline dot, chart summary), and `targetPath()` draws the
+target rule stepped (two separate horizontal runs, no vertical connector, at the user's request), with a small label on
+the earlier level ("75.0% to Mar 2026"). A footer sentence, generated from the
+schedule, states both figures and that the published standard remains 75%.
+**Step placement (confirmed by the user):** 80% applies from April 2026. March 2026 was the deadline month in the guidance,
+so `"2026-03"` was offered as the alternative and declined; it remains a one-value change in config.
+**Visible effect:** orgs whose latest FDS month is April 2026 or later are now judged against 80%. England (76.2% in
+Sep 2026) flips from "meets 75% target" to "below 80% target". An org whose series ends earlier (e.g. former ICB QNQ, last
+month Mar 2026) is still judged against 75%.
+**Data:** rebuild from the committed store changes 223 committed cancer JSON files (FDS `target` 0.75 → 0.80 plus the new
+key); no performance figure changes; `meta.json` unchanged. RTT untouched.
+**Verified locally:** 85 tests pass (81 + 4 new in `tests/test_target_schedule.py`); headless render: stepped line in the 3-year
+view, flat 80% in the 12-month view, no console errors, 0px overflow.
+
 ## 2026-11-13 — DEPLOYED + LIVE-VERIFIED: un-mothball clean-up, host-site alignment, chart palette, comparison-view removal (merge fa31d5d) (Claude session)
 
 The four entries below went live together. Branch `unmothball-and-align` (the four patch commits plus 6c219b4, which removes

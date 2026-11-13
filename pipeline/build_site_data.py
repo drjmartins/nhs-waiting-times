@@ -98,6 +98,9 @@ def _org_payload(df_org):
         out["standards"][std] = {
             "label": config.STANDARDS[std]["label"],
             "target": config.STANDARDS[std]["target"],
+            # Present only for a standard whose target changed over time (see config).
+            **({"target_schedule": config.STANDARDS[std]["target_schedule"]}
+               if config.STANDARDS[std].get("target_schedule") else {}),
             "months": s["month"].tolist(),
             "performance": s["performance"].tolist(),
             "within_target": s["within_target"].astype(int).tolist(),

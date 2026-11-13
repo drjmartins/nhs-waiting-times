@@ -30,10 +30,21 @@ SOURCE_FY_PAGE_TEMPLATE = "https://www.england.nhs.uk/statistics/{fy}-monthly-ca
 COMPARABILITY_BREAK = "2023-10"
 
 # The three headline standards plus the two "referral seen" measures, keyed by a
-# short internal code. `target` is the operational standard (proportion) used as
-# the default in the size-of-the-prize calculator; None where no % target applies.
+# short internal code. `target` is the CURRENT target (proportion) shown on the cards
+# and the chart's target line.
+#
+# `target_schedule` (optional) records a target that changed over time, as
+# [first_month_it_applies | None, value] steps, oldest first; the last step must equal
+# `target`. The front end draws a stepped target line and judges each month against the
+# target that applied in that month, so history is not re-marked against a later target.
+#
+# FDS28 (decided 2026-11-13, see DECISIONS.md): 75% to March 2026, 80% from April 2026.
+# 80% is NHS England's planning-guidance target ("80% by March 2026" in the 2025/26
+# guidance; "maintain at 80%" in the 2026-29 framework). The PUBLISHED statistical
+# standard is still 75%; the dashboard footer says so.
 STANDARDS = {
-    "FDS28":  {"label": "28-day Faster Diagnosis Standard", "target": 0.75, "unit_days": 28},
+    "FDS28":  {"label": "28-day Faster Diagnosis Standard", "target": 0.80, "unit_days": 28,
+               "target_schedule": [[None, 0.75], ["2026-04", 0.80]]},
     "CMB31":  {"label": "31-day combined (decision-to-treat to treatment)", "target": 0.96, "unit_days": 31},
     "CMB62":  {"label": "62-day combined (referral to treatment)", "target": 0.85, "unit_days": 62},
 }
@@ -95,6 +106,26 @@ PICKER_MIN_COMMISSIONER_DENOM = 2000
 # "no year-ago data" note + n<10 flag handle the thin view). ODS status is what
 # separates young (current) from dormant (former) — both can have minimal data.
 YOUNG_WINDOW_MONTHS = 12
+
+
+def validate_standards(standards=None):
+    """Fail loudly on a malformed target schedule (wrong order, or a last step that
+    disagrees with `target`), rather than drawing a wrong target line."""
+    for code, std in (standards or STANDARDS).items():
+        sched = std.get("target_schedule")
+        if not sched:
+            continue
+        if sched[0][0] is not None:
+            raise ValueError(f"{code}: target_schedule must start with [None, value]")
+        froms = [m for m, _ in sched[1:]]
+        if any(m is None for m in froms) or froms != sorted(set(froms)):
+            raise ValueError(f"{code}: target_schedule months must be ascending and unique")
+        if sched[-1][1] != std["target"]:
+            raise ValueError(f"{code}: last target_schedule step ({sched[-1][1]}) must equal "
+                             f"target ({std['target']})")
+
+
+validate_standards()
 
 # Where things get written.
 RAW_DIR = "data/raw"
