@@ -6,7 +6,7 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
-## 2026-11-14 — Nav strip replaced by a single "Home" link; footer name links to LinkedIn — BUILT on branch `minor-nav-footer`, NOT deployed (Claude session; user request)
+## 2026-11-14 — Nav strip replaced by a single "Home" link; footer name links to LinkedIn — DEPLOYED + LIVE-VERIFIED (Claude session; user request)
 
 The `Cancer · RTT · All dashboards` strip (nav "Option A", 2026-06-23) is removed. Landing page: no nav strip (its two cards
 are the navigation). Cancer and RTT pages: one `← Home` link to the landing page. Consequence, accepted by the user: there is
@@ -14,6 +14,9 @@ no direct Cancer ↔ RTT link any more; the route is via Home. Footer band on al
 https://www.linkedin.com/in/drjmartins/ (new tab, `rel="noopener"`). Unused `.dashnav .current` / `.sep` CSS removed.
 Verified locally: 93 tests pass; headless render at 1100px and 320px, Home link returns to the landing page, 0px overflow,
 no console errors.
+**Deployed 2026-11-14:** merged to master and published with a manual `update-data.yml` run (green). Live check (page text and
+links): landing has no nav strip; `/cancer/` and `/rtt/` each have a single "← Home" link to the site root; the footer name
+links to LinkedIn on all three pages.
 
 ## 2026-11-13 — Staleness safeguards: on-site "Data may be out of date" note + weekly freshness watchdog (Claude session, John)
 
