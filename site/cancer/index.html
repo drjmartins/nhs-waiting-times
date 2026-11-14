@@ -53,12 +53,10 @@
      the .orgrow collapses to zero height instead of leaving a blank line. */
   .orgname:empty{display:none}
   .orgname b{color:var(--ink)}
-  /* Shared dashboard nav strip — identical structure/grammar on landing, /cancer/
-     and /rtt/. The current page is non-link marked text (aria-current="page"). */
+  /* Single "Home" link back to the landing page (replaced the Cancer · RTT · All dashboards
+     strip, 2026-11-14). */
   .dashnav{font-family:inherit;font-size:12px;margin-top:8px}
   .dashnav a{color:var(--accent);text-decoration:underline}
-  .dashnav .current{color:var(--ink);font-weight:bold}
-  .dashnav .sep{color:var(--line);margin:0 8px}
   /* Org type buttons (National / Providers / Commissioners) */
   .typebtns{display:inline-flex;border:1px solid var(--line);border-radius:0;overflow:hidden;margin-bottom:8px}
   .typebtn{font:inherit;font-size:13.5px;padding:7px 15px;border:0;border-right:1px solid var(--line);
@@ -237,10 +235,8 @@
   <header>
     <h1>NHS <em>Cancer Waiting Times</em> Dashboard</h1>
     <div class="sub">England &middot; Performance against NHS Cancer Waiting Time Targets</div>
-    <nav class="dashnav" aria-label="Dashboards">
-      <span class="current" aria-current="page">Cancer</span><span class="sep">&middot;</span>
-      <a href="../rtt/">RTT</a><span class="sep">&middot;</span>
-      <a href="../">All dashboards</a>
+    <nav class="dashnav" aria-label="Site">
+      <a href="../">&larr; Home</a>
     </nav>
   </header>
   <div class="note" id="stalenote" role="status" hidden></div>
@@ -354,7 +350,7 @@
 </div>
 <footer class="sitefoot">
   <div class="sitefoot-in">
-    <div><b>Surgical Data and Policy Lab</b><p>Dashboards developed by Dr João Martins.</p></div>
+    <div><b>Surgical Data and Policy Lab</b><p>Dashboards developed by <a href="https://www.linkedin.com/in/drjmartins/" target="_blank" rel="noopener">Dr João Martins</a>.</p></div>
     <nav aria-label="Lab links"><a href="https://surgicaldatapolicy.org/">surgicaldatapolicy.org</a><a href="https://surgicaldatapolicy.org/tools/">All tools</a></nav>
   </div>
 </footer>

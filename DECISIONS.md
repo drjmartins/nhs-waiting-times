@@ -6,6 +6,15 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
+## 2026-11-14 — Nav strip replaced by a single "Home" link; footer name links to LinkedIn — BUILT on branch `minor-nav-footer`, NOT deployed (Claude session; user request)
+
+The `Cancer · RTT · All dashboards` strip (nav "Option A", 2026-06-23) is removed. Landing page: no nav strip (its two cards
+are the navigation). Cancer and RTT pages: one `← Home` link to the landing page. Consequence, accepted by the user: there is
+no direct Cancer ↔ RTT link any more; the route is via Home. Footer band on all three pages: "Dr João Martins" now links to
+https://www.linkedin.com/in/drjmartins/ (new tab, `rel="noopener"`). Unused `.dashnav .current` / `.sep` CSS removed.
+Verified locally: 93 tests pass; headless render at 1100px and 320px, Home link returns to the landing page, 0px overflow,
+no console errors.
+
 ## 2026-11-13 — Staleness safeguards: on-site "Data may be out of date" note + weekly freshness watchdog (Claude session, John)
 
 **Why:** the NHS fetch now runs on John's laptop (scripts/scheduled_refresh.ps1). It reports its own failures, but if the
