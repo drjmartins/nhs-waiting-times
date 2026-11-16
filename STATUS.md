@@ -19,6 +19,7 @@ Two public dashboards on NHS England open data, hosted by the Surgical Data and 
 - **Cancer** (`/cancer/`): 28-day Faster Diagnosis, 31-day and 62-day combined standards, by provider and commissioner,
   with cancer-group and referral-route breakdowns. FDS target is stepped: 75% to March 2026, 80% from April 2026.
 - **RTT** (`/rtt/`): % within 18 weeks, waiting-list size and long waiters, by provider, commissioner and treatment function.
+  The England chart has a tick box to show or hide the 65% / 70% recovery milestones.
 - **Design:** aligned with the host site (IBM Plex Sans, navy and magenta, lab header and footer). Charts and cards must
   stay on white panels for the colours to pass WCAG AA; see DECISIONS 2026-11-13.
 - **Navigation:** landing page cards lead to each dashboard; each dashboard has a single "Home" link.

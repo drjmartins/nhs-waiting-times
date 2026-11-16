@@ -6,7 +6,7 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
-## 2026-11-16 — RTT chart: "Show recovery milestones" tick box — BUILT on branch, NOT deployed (Claude session; user request)
+## 2026-11-16 — RTT chart: "Show recovery milestones" tick box — DEPLOYED + LIVE-VERIFIED 2026-11-16 (Claude session; user request)
 
 A tick box beside the treatment-function selector shows or hides the 65% / 70% recovery-milestone lines on the "% within 18
 weeks" chart. Default ON, so the chart looks as before. It mirrors the existing "Show England" toggle (`SHOW_MILESTONES`,
@@ -20,7 +20,7 @@ Also fixed (user spotted it in preview): the "65% by Mar 2026" margin label was 
 when England sits at about 65%. The RTT charts' right margin (`BG.P.r`) went from 80 to 96 so the label clears the plot, and the
 milestone labels are now vertically centred on their dotted lines, like the 92% target label.
 
-## 2026-11-16 — Small code tidy-up; STATUS.md rewritten as a short current-state page — BUILT on branch `tidy-up`, NOT deployed (Claude session; user request)
+## 2026-11-16 — Small code tidy-up; STATUS.md rewritten as a short current-state page — DEPLOYED + LIVE-VERIFIED 2026-11-16 (Claude session; user request)
 
 A scan for unused code (pyflakes, vulture, and a check of every CSS class, CSS variable and JS function on the three pages)
 found very little after the 13 Nov removals. **Removed:** three unused imports (`pandas` in `pipeline/build_site_data.py`;
@@ -36,6 +36,10 @@ items were reworded rather than dropped (data cleaning never scoped; the June de
 **Also in this deploy:** two wording edits the user made directly on GitHub (RTT card text on the landing page; RTT
 subtitle now uses a colon instead of an em dash), commits 08ba6d6 and a73a565.
 Verified locally: 93 tests pass; pyflakes clean; headless render of all three pages at 1100px and 320px.
+**Deployed 2026-11-16** with the milestones tick box (entry above): branch `tidy-up` merged to master and published with a
+manual `update-data.yml` run (green). Live check (page text): RTT subtitle and landing-page RTT card show the new wording;
+"Show recovery milestones" is present on `/rtt/`; all three pages load with header, Home link and footer. Tick-box behaviour
+and label positions were checked by the user in a local preview before merge.
 
 ## 2026-11-14 — Nav strip replaced by a single "Home" link; footer name links to LinkedIn — DEPLOYED + LIVE-VERIFIED (Claude session; user request)
 
