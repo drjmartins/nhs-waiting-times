@@ -6,6 +6,19 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
+## 2026-11-16 — RTT chart: "Show recovery milestones" tick box — BUILT on branch, NOT deployed (Claude session; user request)
+
+A tick box beside the treatment-function selector shows or hides the 65% / 70% recovery-milestone lines on the "% within 18
+weeks" chart. Default ON, so the chart looks as before. It mirrors the existing "Show England" toggle (`SHOW_MILESTONES`,
+`setShowMilestones`, synced in `syncControls`). The box is offered only where milestones can be drawn at all: England, all
+treatment functions, % measure (rule unchanged from 2026-06-19; `milestonesApply()`). Unticking removes the lines, their
+legend entry and their pull on the y-axis; the 92% target line is unaffected. Carries into the expand modal and the
+PNG/SVG export because both read the on-screen chart. Test hook: `?milestones=off`.
+Verified locally (headless): on/off on England; box hidden on a trust, on a specialty and on the count measures; state
+persists across measure switches; 0px overflow at 320px; no console errors. 93 tests pass (front-end only; no data change).
+Noticed, not changed: the "65% by Mar 2026" margin label is partly covered by the latest data point when England sits at
+about 65%.
+
 ## 2026-11-16 — Small code tidy-up; STATUS.md rewritten as a short current-state page — BUILT on branch `tidy-up`, NOT deployed (Claude session; user request)
 
 A scan for unused code (pyflakes, vulture, and a check of every CSS class, CSS variable and JS function on the three pages)

@@ -274,6 +274,9 @@
       <span class="fgrp" id="engwrap">
         <label class="engtoggle"><input type="checkbox" id="engchk" checked> Show England</label>
       </span>
+      <span class="fgrp" id="mswrap">
+        <label class="engtoggle"><input type="checkbox" id="mschk" checked> Show recovery milestones</label>
+      </span>
       <span id="slicehint" class="slicehint"></span>
       <span class="rangewrap" id="rangewrap">
         <span class="flabel">Time range</span>
@@ -330,6 +333,7 @@ const ptypeOf = o => o.ptype==="independent" ? "independent" : "trust";  // abse
 let LWTHRESH=52;                         // long-waiter threshold (52|65|78|104), shown for the longwait measure
 const RANGE_MONTHS={"3y":36,"12m":12,"all":Infinity};
 let RANGE="3y";
+let SHOW_MILESTONES=true;                // recovery-milestone lines (England, all treatment functions, % measure only)
 let SHOW_ENGLAND=true;                   // England comparison overlay (% measure only — counts don't share a scale)
 let ACTIVE_NAT=null;                     // England overlay currently drawn (for tooltip scaling/export)
 let TF=null;                             // null = all treatment functions (core C_999); else a TF code
@@ -404,6 +408,7 @@ async function init(){
   document.querySelectorAll("#rangebtns .segbtn").forEach(b=>b.addEventListener("click", ()=>setRange(b.dataset.range)));
   document.querySelectorAll("#threshbtns .segbtn").forEach(b=>b.addEventListener("click", ()=>setThresh(+b.dataset.th)));
   document.getElementById("engchk").addEventListener("change", e=>setShowEngland(e.target.checked));
+  document.getElementById("mschk").addEventListener("change", e=>setShowMilestones(e.target.checked));
 
   const qs = new URLSearchParams(location.search);
   const qM = (qs.get("measure")||"").toLowerCase();
@@ -411,6 +416,7 @@ async function init(){
   const qRange = qs.get("range"); if(qRange && (qRange in RANGE_MONTHS)) RANGE=qRange;
   const qTh = +qs.get("th"); if([52,65,78,104].includes(qTh)) LWTHRESH=qTh;
   if(qs.get("england")==="off") SHOW_ENGLAND=false;
+  if(qs.get("milestones")==="off") SHOW_MILESTONES=false;   // deep-link / test hook
   const qTF = qs.get("tf");                 // deep-link hook: ?tf=C_100 (set before load so it persists)
   if(qTF && (META.treatment_functions||[]).some(t=>t.code===qTF)) TF=qTF;
   const qOrg = qs.get("org");
@@ -785,6 +791,9 @@ function sparkCount(s){
 function setRange(r){ if(RANGE===r || !(r in RANGE_MONTHS)) return; RANGE=r; renderBig(); }
 function setThresh(t){ if(LWTHRESH===t) return; LWTHRESH=t; renderCards(); renderBig(); }
 function setShowEngland(on){ if(SHOW_ENGLAND===on) return; SHOW_ENGLAND=on; renderBig(); }
+function setShowMilestones(on){ if(SHOW_MILESTONES===on) return; SHOW_MILESTONES=on; renderBig(); }
+// Milestones only apply to the all-England, all-treatment-function headline (see renderRate).
+function milestonesApply(){ return MEASURE==="pct18" && TF===null && !!CURRENT && CURRENT.isNational; }
 function syncControls(){
   document.querySelectorAll("#rangebtns .segbtn").forEach(b=>{ const on=b.dataset.range===RANGE;
     b.classList.toggle("active", on); b.setAttribute("aria-pressed", on?"true":"false"); });
@@ -796,6 +805,9 @@ function syncControls(){
   const engShown = (MEASURE==="pct18" && !CURRENT.isNational);
   document.getElementById("engwrap").hidden = !engShown;
   document.getElementById("engchk").checked = SHOW_ENGLAND;
+  // Milestones tick box: offered only where the milestone lines can be drawn at all.
+  document.getElementById("mswrap").hidden = !milestonesApply();
+  document.getElementById("mschk").checked = SHOW_MILESTONES;
 }
 
 /* ---------- big chart ---------- */
@@ -846,7 +858,7 @@ function renderRate(){
   // Recovery milestones (65/70%) belong on the all-England, all-treatment-function
   // headline only — on an individual specialty they're off-target context and the
   // 65% line collides with the data band. The 92% target line stays on every view.
-  const showMs = (TF===null && CURRENT.isNational);
+  const showMs = SHOW_MILESTONES && (TF===null && CURRENT.isNational);   // user can hide them (tick box)
   const hasLow = s.total.some(v=>(+v)<THRESH);
   const item=(sw,mk,sq,label)=>`<span class="lgitem">${legendSwatch(sw,mk,sq)}${label}</span>`;
   const org_=item(`stroke="var(--org)" stroke-width="2.4"`,`fill="var(--org)"`,false,CURRENT.isNational?"England":"this organisation");
