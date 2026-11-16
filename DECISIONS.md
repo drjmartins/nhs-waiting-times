@@ -6,6 +6,23 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
+## 2026-11-16 — Small code tidy-up; STATUS.md rewritten as a short current-state page — BUILT on branch `tidy-up`, NOT deployed (Claude session; user request)
+
+A scan for unused code (pyflakes, vulture, and a check of every CSS class, CSS variable and JS function on the three pages)
+found very little after the 13 Nov removals. **Removed:** three unused imports (`pandas` in `pipeline/build_site_data.py`;
+one each in `tests/test_ods_lifecycle.py` and `tests_rtt/test_build.py`); unused `FULL_CSV_MARKER` in `pipeline_rtt/config.py`;
+unused CSS (`--bad` on cancer/RTT, the old teal `--org` on the landing page, tooltip rules RTT never used, three selectors
+that matched nothing); the `.gitignore` entry and four comments that still referred to the deleted synthetic demo.
+**Kept on purpose:** the URL test hooks (`?expand=`, `?panel=`, `?tip=` and similar: used for headless checks);
+`cancer_groups.assert_all_mapped` (only the tests call it, as a guard); `--accent-2` (unused in page CSS but documents the
+magenta token). No behaviour change; no data change.
+**STATUS.md** went from 444 lines to about 75. The June to October deploy-by-deploy log was removed from it: each of those
+deploys has its own entry in this file, and the old STATUS.md text remains in git history at commit c5e23ba. Two stale open
+items were reworded rather than dropped (data cleaning never scoped; the June decommission check never recorded as run).
+**Also in this deploy:** two wording edits the user made directly on GitHub (RTT card text on the landing page; RTT
+subtitle now uses a colon instead of an em dash), commits 08ba6d6 and a73a565.
+Verified locally: 93 tests pass; pyflakes clean; headless render of all three pages at 1100px and 320px.
+
 ## 2026-11-14 — Nav strip replaced by a single "Home" link; footer name links to LinkedIn — DEPLOYED + LIVE-VERIFIED (Claude session; user request)
 
 The `Cancer · RTT · All dashboards` strip (nav "Option A", 2026-06-23) is removed. Landing page: no nav strip (its two cards

@@ -108,7 +108,6 @@ def test_breakdown_routing_and_tf_names():
 
 
 def test_tf_sum_gate_pass_and_fail():
-    from collections import defaultdict
     store = {("provider", "RAA", "2026-03"): {"within18": 10, "total": 10, "w52": 0, "w65": 0, "w78": 0, "w104": 0}}
     bd_ok = {("provider", "RAA"): {"C_100": {"2026-03": {"within18": 6, "total": 6, "w52": 0, "w65": 0, "w78": 0, "w104": 0}},
                                     "X02":   {"2026-03": {"within18": 4, "total": 4, "w52": 0, "w65": 0, "w78": 0, "w104": 0}}}}

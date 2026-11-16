@@ -13,8 +13,6 @@ import json
 import os
 import datetime as dt
 
-import pandas as pd
-
 from . import config
 from . import cancer_groups
 from pipeline_common import ods

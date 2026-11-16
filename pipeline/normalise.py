@@ -45,7 +45,7 @@ COLUMN_CANDIDATES = {
 MONTH_CANDIDATES = ["MONTH", "PERIOD", "Period", "Month", "REPORTING_PERIOD"]
 
 # Breakdown handling supports two source shapes:
-#   (a) an explicit, pre-collapsed (type, value) pair -- the synthetic generator
+#   (a) an explicit, pre-collapsed (type, value) pair -- the test fixtures
 #       and any future source that ships breakdown columns directly; or
 #   (b) NHS England's post-Nov-2025 three-column layout, derived below.
 BREAKDOWN_TYPE_CANDIDATES = ["BREAKDOWN", "BREAKDOWN_TYPE", "CATEGORY_TYPE"]
@@ -53,7 +53,7 @@ BREAKDOWN_VALUE_CANDIDATES = ["BREAKDOWN_VALUE", "CATEGORY", "STAGE", "CANCER_TY
 
 # NHS region for each provider. In the CWT file this is carried by Parent_Org
 # (verified one-to-one with the 7 NHS England regions, no ODS lookup needed).
-# Optional: sources without it (e.g. the synthetic generator) yield region "".
+# Optional: sources without it (e.g. the test fixtures) yield region "".
 REGION_CANDIDATES = ["Parent_Org", "PARENT_ORG", "REGION", "NHS_REGION", "Region"]
 
 # NHS three-column breakdown layout: canonical dimension -> source column.
@@ -200,7 +200,7 @@ def normalise(df, source_file, data_status, period_hint=None):
     out = out[(out["total"].notna()) & (out["total"] > 0)]
 
     # Org level. Source ships a Provider/Commissioner 'basis' (or an explicit
-    # level in the synthetic file); the all-England aggregate arrives as a
+    # level in the test fixtures); the all-England aggregate arrives as a
     # pseudo-org 'Total'. Normalise to our national/provider/icb vocabulary.
     out["org_level"] = out["org_level"].astype(str).str.strip().str.lower()
     out["org_level"] = out["org_level"].replace({"commissioner": "icb"})
