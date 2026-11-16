@@ -819,7 +819,8 @@ function renderBig(){
 }
 
 // Shared geometry. P.t = header strip for the break marker; P.r = right margin for labels.
-const BG={W:920,H:380,P:{l:54,r:80,t:36,b:30}};
+// P.r is 96 (was 80) so the longest margin label ("65% by Mar 2026", ~81px) clears the latest data point.
+const BG={W:920,H:380,P:{l:54,r:96,t:36,b:30}};
 
 function breakMarkerSVG(xs, x){
   if(!META.series_break || xs[0] >= META.series_break) return "";
@@ -900,7 +901,7 @@ function rateSVG(s,nat,showMs){
     if(mm.target<lo||mm.target>hi) continue;
     const my=y(mm.target);
     ms+=`<line x1="${P.l}" y1="${my.toFixed(1)}" x2="${W-P.r}" y2="${my.toFixed(1)}" stroke="var(--milestone)" stroke-dasharray="2 3" stroke-width="1.1"/>`+
-        `<text x="${W-3}" y="${(my-3).toFixed(1)}" font-size="9" text-anchor="end" fill="var(--milestone-text)">${xmlEsc(mm.label)}</text>`;
+        `<text x="${W-3}" y="${(my+3.2).toFixed(1)}" font-size="9" text-anchor="end" fill="var(--milestone-text)">${xmlEsc(mm.label)}</text>`;
   }
   const ty=y(s.target);
   const tline=`<line x1="${P.l}" y1="${ty.toFixed(1)}" x2="${W-P.r}" y2="${ty.toFixed(1)}" stroke="var(--target)" stroke-dasharray="5 4" stroke-width="1.4"/>`+

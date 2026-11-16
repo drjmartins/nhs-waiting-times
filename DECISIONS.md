@@ -16,8 +16,9 @@ legend entry and their pull on the y-axis; the 92% target line is unaffected. Ca
 PNG/SVG export because both read the on-screen chart. Test hook: `?milestones=off`.
 Verified locally (headless): on/off on England; box hidden on a trust, on a specialty and on the count measures; state
 persists across measure switches; 0px overflow at 320px; no console errors. 93 tests pass (front-end only; no data change).
-Noticed, not changed: the "65% by Mar 2026" margin label is partly covered by the latest data point when England sits at
-about 65%.
+Also fixed (user spotted it in preview): the "65% by Mar 2026" margin label was partly covered by the latest data point
+when England sits at about 65%. The RTT charts' right margin (`BG.P.r`) went from 80 to 96 so the label clears the plot, and the
+milestone labels are now vertically centred on their dotted lines, like the 92% target label.
 
 ## 2026-11-16 — Small code tidy-up; STATUS.md rewritten as a short current-state page — BUILT on branch `tidy-up`, NOT deployed (Claude session; user request)
 
