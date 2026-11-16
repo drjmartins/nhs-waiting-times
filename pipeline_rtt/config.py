@@ -20,7 +20,6 @@ SOURCE_INDEX = "https://www.england.nhs.uk/statistics/statistical-work-areas/rtt
 SOURCE_FY_PAGES = [
     "https://www.england.nhs.uk/statistics/statistical-work-areas/rtt-waiting-times/rtt-data-{fy}/"
 ]
-FULL_CSV_MARKER = "Full-CSV-data-file"
 
 # The 18-week (92%) incomplete-pathway standard is still the live NHS
 # Constitution standard. Recovery-trajectory milestones (planning guidance /

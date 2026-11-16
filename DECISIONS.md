@@ -6,6 +6,37 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
+## 2026-11-16 — RTT chart: "Show recovery milestones" tick box — BUILT on branch, NOT deployed (Claude session; user request)
+
+A tick box beside the treatment-function selector shows or hides the 65% / 70% recovery-milestone lines on the "% within 18
+weeks" chart. Default ON, so the chart looks as before. It mirrors the existing "Show England" toggle (`SHOW_MILESTONES`,
+`setShowMilestones`, synced in `syncControls`). The box is offered only where milestones can be drawn at all: England, all
+treatment functions, % measure (rule unchanged from 2026-06-19; `milestonesApply()`). Unticking removes the lines, their
+legend entry and their pull on the y-axis; the 92% target line is unaffected. Carries into the expand modal and the
+PNG/SVG export because both read the on-screen chart. Test hook: `?milestones=off`.
+Verified locally (headless): on/off on England; box hidden on a trust, on a specialty and on the count measures; state
+persists across measure switches; 0px overflow at 320px; no console errors. 93 tests pass (front-end only; no data change).
+Also fixed (user spotted it in preview): the "65% by Mar 2026" margin label was partly covered by the latest data point
+when England sits at about 65%. The RTT charts' right margin (`BG.P.r`) went from 80 to 96 so the label clears the plot, and the
+milestone labels are now vertically centred on their dotted lines, like the 92% target label.
+
+## 2026-11-16 — Small code tidy-up; STATUS.md rewritten as a short current-state page — BUILT on branch `tidy-up`, NOT deployed (Claude session; user request)
+
+A scan for unused code (pyflakes, vulture, and a check of every CSS class, CSS variable and JS function on the three pages)
+found very little after the 13 Nov removals. **Removed:** three unused imports (`pandas` in `pipeline/build_site_data.py`;
+one each in `tests/test_ods_lifecycle.py` and `tests_rtt/test_build.py`); unused `FULL_CSV_MARKER` in `pipeline_rtt/config.py`;
+unused CSS (`--bad` on cancer/RTT, the old teal `--org` on the landing page, tooltip rules RTT never used, three selectors
+that matched nothing); the `.gitignore` entry and four comments that still referred to the deleted synthetic demo.
+**Kept on purpose:** the URL test hooks (`?expand=`, `?panel=`, `?tip=` and similar: used for headless checks);
+`cancer_groups.assert_all_mapped` (only the tests call it, as a guard); `--accent-2` (unused in page CSS but documents the
+magenta token). No behaviour change; no data change.
+**STATUS.md** went from 444 lines to about 75. The June to October deploy-by-deploy log was removed from it: each of those
+deploys has its own entry in this file, and the old STATUS.md text remains in git history at commit c5e23ba. Two stale open
+items were reworded rather than dropped (data cleaning never scoped; the June decommission check never recorded as run).
+**Also in this deploy:** two wording edits the user made directly on GitHub (RTT card text on the landing page; RTT
+subtitle now uses a colon instead of an em dash), commits 08ba6d6 and a73a565.
+Verified locally: 93 tests pass; pyflakes clean; headless render of all three pages at 1100px and 320px.
+
 ## 2026-11-14 — Nav strip replaced by a single "Home" link; footer name links to LinkedIn — DEPLOYED + LIVE-VERIFIED (Claude session; user request)
 
 The `Cancer · RTT · All dashboards` strip (nav "Option A", 2026-06-23) is removed. Landing page: no nav strip (its two cards

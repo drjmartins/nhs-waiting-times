@@ -5,10 +5,6 @@ data/raw/
 # committed. The derived per-org JSON under site/rtt/data IS committed (~2MB).
 data_rtt/raw/*.zip
 
-# Dev-only synthetic store (kept separate from the real store so it can never
-# seed a real run). Never belongs in the repo.
-data/processed/tidy_synthetic.parquet
-
 # Download artefacts (per-FY CSVs, headline extract, gzipped full file). Large
 # and rebuilt every run into the site/ Pages artefact; not stored in git.
 site/cancer/data/downloads/

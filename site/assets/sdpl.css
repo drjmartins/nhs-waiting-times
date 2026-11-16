@@ -27,8 +27,8 @@
 .sitebar a:focus-visible,.sitefoot a:focus-visible{outline:2px solid #c2185b;outline-offset:3px}
 
 /* Heading accent: the host's bold-italic magenta phrase. #c2185b is 5.87:1 on white and
-   5.38:1 on the #f5f5f2 page tint. Headings/nav only, never a data state (it is close
-   in lightness to the dashboards' red --bad). */
+   5.38:1 on the #f5f5f2 page tint. Headings/nav only; in charts it is the target colour
+   and nothing else. */
 h1{font-weight:700;letter-spacing:-.02em;line-height:1.15}
 h1 em{font-style:italic;font-weight:700;color:#c2185b}
 

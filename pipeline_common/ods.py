@@ -180,7 +180,7 @@ def assert_independents_tagged(index, label, trust_codes):
     missing). When an ODS NHS-trust set IS present, a dashboard with providers MUST
     tag at least one independent — zero means the provider-code↔ODS match silently
     failed, which would mis-show every provider under the NHS-Trusts default and
-    pass every other gate. Skipped when trust_codes is empty (synthetic/dev/tests,
+    pass every other gate. Skipped when trust_codes is empty (dev/tests,
     where typing isn't attempted); the real-run entrypoints separately refuse to
     build on an empty trust set. Returns the independent count on success."""
     if not trust_codes:

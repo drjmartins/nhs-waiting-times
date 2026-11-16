@@ -18,7 +18,6 @@ import pytest
 from pipeline import build_site_data as b
 from pipeline import config as ccfg
 from pipeline_rtt import build as rb
-from pipeline_rtt import config as rcfg
 from pipeline_common import ods
 
 
