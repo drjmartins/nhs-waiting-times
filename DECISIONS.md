@@ -6,6 +6,16 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
+## 2026-11-21: RTT ICB "Missing data" note reworded, sorted and capped (Claude session; user request)
+- After the first refresh with ICB estimates, Nottingham and Nottinghamshire (QT1) listed Sheffield Teaching Hospitals and
+  Cora Health MSK. This is correct: they treat QT1-commissioned patients (Bassetlaw joined the ICB in July 2022) and the
+  ICB figures follow NHS England's commissioner coding. The note read as if they were Notts providers, so it now says
+  "Providers treating this ICB's patients that did not submit RTT data: …".
+- Providers are listed largest first (by the ICB pathways each last held); at most 3 are named, the rest sit behind an
+  "and N more providers" button that reveals them in place, so the note stays short as gaps accumulate. A trailing
+  "(formerly …)" is dropped from names in the note; "MSK" is kept in capitals by `humanName()`.
+- Estimates unchanged (all providers above the 1% share still count). User chose this over naming only providers above 5%.
+
 ## 2026-11-20: DEPLOYED + LIVE-VERIFIED: RTT estimates and missing-data notes, default range "All", FDS target banner, whole-number targets and spaced target labels (Claude session)
 - Branch `rtt-estimates` (commit 97616b9) merged to `master`, branch deleted; published with "Update CWT + RTT data and deploy"
   (`skip_fetch` true). Covers every 2026-11-20 entry below.
