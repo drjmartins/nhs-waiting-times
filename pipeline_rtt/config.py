@@ -73,6 +73,19 @@ RECON_GATE = {
 # every NHS England headline. Identified by commissioner org/parent code.
 NONC_MARKER = "NONC"
 
+# --- Trusts that did not submit (DECISIONS 2026-11-20) -----------------------
+# NHS England's "RTT Overview Timeseries Including Estimates for Missing Trusts"
+# workbook: England-level figures with and without estimates for non-submitting
+# trusts. Found on the FY pages by this filename fragment; the latest month wins.
+OVERVIEW_MARKER = "Overview-Timeseries-Including-Estimates"
+OVERVIEW_PATH = "data_rtt/raw/overview_estimates.xlsx"
+# A trust's absence is only flagged if its last submission before the gap had at
+# least this many on its waiting list (filters out tiny independent clinics that
+# report intermittently). For an ICB, the trust's last contribution to THAT ICB must
+# reach this figure AND 1% of the ICB's list in that month.
+MISSING_MIN_WAITLIST = 1000
+MISSING_MIN_ICB_SHARE = 0.01
+
 # Reliability threshold for the percentage measure (shared with cancer): a
 # month whose denominator is below this is low-reliability (flagged, not hidden).
 RELIABILITY_THRESHOLD = 10

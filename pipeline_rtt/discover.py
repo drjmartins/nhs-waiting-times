@@ -67,6 +67,23 @@ def discover_links(htmls, base_url=config.SOURCE_INDEX):
     return out
 
 
+def discover_overview(htmls, base_url=config.SOURCE_INDEX):
+    """Latest "RTT Overview Timeseries Including Estimates for Missing Trusts" link.
+    Returns (month 'YYYY-MM', url) or None. Filenames carry a MonYY token, e.g.
+    'RTT-Overview-Timeseries-Including-Estimates-for-Missing-Trusts-Sep26-XLS-140K-ojyW5x.xlsx'."""
+    best = None
+    for html in htmls:
+        for href in re.findall(r'href="([^"]*' + config.OVERVIEW_MARKER + r'[^"]*\.xlsx?)"', html, re.I):
+            m = re.search(r"Missing-Trusts-([A-Za-z]{3})(\d{2})", href, re.I)
+            mon = _ABBR.get(m.group(1).lower()) if m else None
+            if not mon:
+                continue
+            month = f"20{int(m.group(2)):02d}-{mon:02d}"
+            if best is None or month > best[0]:
+                best = (month, urljoin(base_url, href))
+    return best
+
+
 def scrape_all_links(fys):
     """Fetch every FY page and combine their discovered Full-CSV links.
 
@@ -78,6 +95,8 @@ def scrape_all_links(fys):
             htmls.append(fetch_page_html(fy_page_url(fy)))
         except Exception as e:
             print(f"  WARN: {fy} page fetch failed ({e})")
+    # Remember the pages so the overview workbook can be found without re-fetching.
+    scrape_all_links.last_htmls = htmls
     return discover_links(htmls)
 
 

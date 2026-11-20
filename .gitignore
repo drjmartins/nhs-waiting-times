@@ -4,6 +4,7 @@ data/raw/
 # RTT raw monthly Full-CSV zips (~175MB) — re-fetched by the pipeline, never
 # committed. The derived per-org JSON under site/rtt/data IS committed (~2MB).
 data_rtt/raw/*.zip
+data_rtt/raw/*.xlsx
 
 # Download artefacts (per-FY CSVs, headline extract, gzipped full file). Large
 # and rebuilt every run into the site/ Pages artefact; not stored in git.
