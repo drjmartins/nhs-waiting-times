@@ -103,9 +103,9 @@ def process_zip(path, store, bd_store, names, tf_names, contrib=None):
     individual treatment-function rows feed the breakdown store. The TF-sum gate
     (reconcile_tf) later asserts the breakdown sums back to the core total.
 
-    `contrib` (optional) collects each provider's all-TF waiting list per ICB per
-    month, {(icb, month): {provider: total}}, so an ICB can say which of its trusts
-    did not submit (missing_submissions)."""
+    `contrib` (optional) collects each provider's all-TF metrics per ICB per month,
+    {(icb, month): {provider: metrics}}, so an ICB can say which of its providers did
+    not submit (missing_submissions) and carry their figures forward (icb_estimates)."""
     z = zipfile.ZipFile(path)
     member = z.namelist()[0]
     with z.open(member) as fh:
@@ -131,8 +131,9 @@ def process_zip(path, store, bd_store, names, tf_names, contrib=None):
             if icb:                       # hub rows have a blank ICB parent
                 targets.append(("icb", icb))
                 if contrib is not None and tf == "C_999":
-                    c = contrib.setdefault((icb, month), {})
-                    c[pcode] = c.get(pcode, 0) + m["total"]
+                    c = contrib.setdefault((icb, month), {}).setdefault(pcode, _blank_metrics())
+                    for k, v in m.items():
+                        c[k] += v
             for level, code in targets:
                 if tf == "C_999":
                     acc = store[(level, code, month)]
@@ -305,8 +306,9 @@ def missing_submissions(orgs, contrib, all_months, names, classification=None, t
         for (icb, mo), provs in contrib.items():
             if mo != prev or code not in provs:
                 continue
-            share = provs[code]
-            if share >= config.MISSING_MIN_WAITLIST and share >= config.MISSING_MIN_ICB_SHARE * sum(provs.values()):
+            share = provs[code]["total"]
+            icb_total = sum(p["total"] for p in provs.values())
+            if share >= config.MISSING_MIN_WAITLIST and share >= config.MISSING_MIN_ICB_SHARE * icb_total:
                 by_icb.setdefault(icb, []).append({
                     "code": code, "name": names.get(("provider", code), code),
                     "from": run["from"], "to": run["to"], "last_contribution": share})
@@ -315,6 +317,47 @@ def missing_submissions(orgs, contrib, all_months, names, classification=None, t
     for v in by_icb.values():
         v.sort(key=lambda r: (r["from"], r["name"]))
     return by_provider, by_icb
+
+
+def icb_estimates(orgs, contrib, by_provider, by_icb, all_months):
+    """ICB figures with an estimate for providers that did not submit (DECISIONS 2026-11-20).
+
+    NHS England publishes no ICB-level estimate, so this applies NHS England's national
+    method at ICB level: for each month a provider missed, add the figures it last
+    submitted for THAT ICB (its contribution in the month before the gap) to the ICB's
+    reported figures. All missing providers' contributions are added, but only ICBs with
+    a material exclusion (an entry in `by_icb`) get an estimate, so a few patients from
+    a distant provider don't put an estimate on every ICB. Every month of the ICB's
+    series is included (estimate == reported where nothing is missing), like England.
+    Returns {icb: {"waitlist"|"pct18"|"w52"|"w65"|"w78"|"w104": {month: value}}}."""
+    pos = {m: i for i, m in enumerate(all_months)}
+    add = {}                                         # (icb, month) -> metrics added
+    for code, runs in by_provider.items():
+        for r in runs:
+            a = pos[r["from"]]
+            b = pos[r["to"]] if r["to"] else len(all_months) - 1
+            prev = all_months[a - 1]
+            for (icb, mo), provs in contrib.items():
+                if mo != prev or code not in provs:
+                    continue
+                for i in range(a, b + 1):
+                    acc = add.setdefault((icb, all_months[i]), _blank_metrics())
+                    for k, v in provs[code].items():
+                        acc[k] += v
+    out = {}
+    for icb in by_icb:
+        base = orgs.get(("icb", icb), {})
+        est = {"waitlist": {}, "pct18": {}, "w52": {}, "w65": {}, "w78": {}, "w104": {}}
+        for mo in sorted(base):
+            m = dict(base[mo])
+            for k, v in add.get((icb, mo), {}).items():
+                m[k] += v
+            est["waitlist"][mo] = m["total"]
+            est["pct18"][mo] = round(m["within18"] / m["total"], 4) if m["total"] else None
+            for k in ("w52", "w65", "w78", "w104"):
+                est[k][mo] = m[k]
+        out[icb] = est
+    return out, add
 
 
 def run(raw_dir=config.RAW_DIR, out_dir=config.SITE_DATA_DIR, classification=None, trust_codes=None,
@@ -379,6 +422,18 @@ def run(raw_dir=config.RAW_DIR, out_dir=config.SITE_DATA_DIR, classification=Non
         print(f"  Missing trusts {last}: {sorted(c for c, rs in not_submitted.items() if any(r['to'] is None for r in rs))}"
               f" last submissions sum {ours:,} vs NHS estimate gap {nhs_gap.get(last, 0):,}"
               + ("" if ours == nhs_gap.get(last, 0) else "  (WARN: not an exact match; notes may be incomplete)"))
+    icb_est, icb_add = icb_estimates(orgs, contrib, not_submitted, icb_excludes, all_months)
+    # Fail-loud arithmetic check: what the ICBs add can never exceed what the missing providers
+    # last submitted in total (the difference is their hub / blank-ICB rows, normally small).
+    for mo in all_months:
+        added = sum(v["total"] for (icb, m), v in icb_add.items() if m == mo)
+        missing = sum(r["last_waitlist"] for rs in not_submitted.values() for r in rs
+                      if r["from"] <= mo <= (r["to"] or all_months[-1]))
+        if added > missing:
+            raise AssertionError(f"ICB ESTIMATES FAILED ({mo}): ICBs add {added:,} but missing providers "
+                                 f"last submitted only {missing:,} — refusing to publish")
+    if icb_est:
+        print(f"  ICB estimates for {len(icb_est)} ICB(s): {sorted(icb_est)}")
 
     org_dir = os.path.join(out_dir, "org")
     os.makedirs(org_dir, exist_ok=True)
@@ -401,6 +456,8 @@ def run(raw_dir=config.RAW_DIR, out_dir=config.SITE_DATA_DIR, classification=Non
             payload["not_submitted"] = not_submitted[code]
         if level == "icb" and code in icb_excludes:
             payload["excludes"] = icb_excludes[code]
+        if level == "icb" and code in icb_est:
+            payload["estimates"] = icb_est[code]
         with open(os.path.join(org_dir, f"{code}.json"), "w") as f:
             json.dump(payload, f, separators=(",", ":"))
         with open(os.path.join(org_dir, f"{code}.breakdown.json"), "w") as f:

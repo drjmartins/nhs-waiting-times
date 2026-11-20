@@ -6,6 +6,30 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
+## 2026-11-20: Target values shown without decimals; margin labels spaced from and centred on their lines, BOTH dashboards (Claude session; user request)
+- Targets are always whole percentages, so every target value now reads "80%", not "80.0%" (cancer: `fmtTarget()` used in the
+  chart label, the FDS banner, the card's "below 80% target", the sparkline and the chart's text summary; RTT's `targetPct()`
+  already did this). Performance figures keep one decimal.
+- Every in-chart label tied to a dashed reference line (cancer target; RTT 92% target and the 65% / 70% milestones) now starts
+  `LBL_GAP` (6px) after the line ends at `W-P.r`, and is vertically centred on the line with `dominant-baseline="central"`
+  instead of a hand-tuned baseline offset. Checked: all labels fit inside the 920px viewBox; no overflow at 320px.
+
+## 2026-11-20 — Cancer: FDS target explanation moved from the footer to a banner under the chart; in-chart "75.0% to Mar 2026" label removed (Claude session; user request)
+
+The sentence explaining the stepped 28-day target (75% to March 2026, 80% from April 2026, published standard still 75%) now
+sits in a neutral banner directly under the chart, shown only while the selected standard has a stepped target (FDS28) and
+hidden on the 31- and 62-day standards. The small "75.0% to Mar 2026" label on the earlier target run is gone; the right-hand
+"target 80.0%" label stays. Shipped with the RTT estimates branch.
+
+## 2026-11-20 — Time range: default "All", buttons ordered All · 3 years · 12 months — BOTH dashboards (Claude session; user request)
+
+The per-organisation chart on Cancer and RTT now opens on all months instead of the last 3 years, and the range buttons read
+All, 3 years, 12 months. Supersedes the "default 3 years" choice of 2026-06-16 (v15). `?range=3y` / `?range=12m` links still
+work. On the cancer 31/62-day charts the default view now spans the Oct-2023 standards change, so its in-chart marker is
+visible by default (it already was in the "All" view). Also: the x-axis no longer puts a regular month label within
+three-quarters of a step of the final one (was half), which crowded "May 26 Sep 26" in the All view. Shipped with the RTT
+estimates branch.
+
 ## 2026-11-20 — RTT: NHS England's estimates for missing trusts added; missing-data notes on trusts and ICBs — BUILT on branch `rtt-estimates`, NOT deployed (Claude session; user decisions)
 
 **Why:** the user saw 7.07M on the dashboard against 7.38M on NHS England's RTT dashboard (Sep 2026). Not an error: our
@@ -36,7 +60,43 @@ and `not_submitted` to 12 committed provider files using the same function. ICB 
 data, so ICB notes first appear after the next real refresh on the local machine.
 **Front end (`site/rtt/index.html`):** grey line, legend entry, tooltip line and data-table column on England charts; cards as
 above (small changes now shown to one decimal, e.g. "▼ 0.2%" rather than "▼ 0%"); notes in the existing org-note box; footer
-sentence. Also fixed: the % chart tooltip used the milestone-stretched axis even when milestones were switched off.
+sentence, plus one saying waiting-list figures count RTT pathways, not people (user spotted "patients waiting" on the
+waiting-list card and chart legend; now "pathways on the waiting list"). Legends (user requests, same change): England charts label the two lines "England (reported data)" and "England (incl.
+estimates for missing trusts)"; the "92% target" legend entry is gone (the line is labelled on the chart); and every legend,
+on the RTT and cancer pages and in the cancer chart download, separates entries with dots only (the "|" between the
+organisation's lines and the reference lines, used since 2026-06-15, is dropped). On provider and ICB views the England comparison line is the REPORTED England figure (like-for-like with
+the provider's reported data) and is now labelled "England (reported data)". The grey estimate line was then REMOVED from the "% within 18 weeks"
+chart (user decision): the two lines differ by about 0.1 points in the 3-year view (at most 0.46, Oct 2022), so the line was
+invisible. That chart's hover box and data table still give the estimated %, and the % card still shows NHS's figure (65.8%
+against 65.9% reported for Sep 2026). The grey line was then also removed from the long-waiter chart (user decision), so it
+appears on the England waiting-list chart only; the long-waiter hover box and table keep the estimate. A neutral note under
+every England chart explains reported against NHS England's published figures and says where to find the estimate on that
+chart (`renderEstNote`). England's own line is labelled "England (reported data)" on every RTT chart, with or without the grey line. **ICBs follow missing providers (user chose options 1 + 2 after mock-ups):** an ICB lost most of its list when its
+acute trust did not submit (Nottingham and Nottinghamshire, Sep 2026: 54,033 against ~127,000 the month before). NHS England
+publishes no ICB estimate, so `build.icb_estimates` applies NHS England's national method at ICB level: each missing
+provider's contribution to that ICB in the month before its gap is carried forward, for every measure. Only ICBs with a
+material exclusion (`excludes`) get an `estimates` block; all missing contributions are added to it. Fail-loud check: what the
+ICBs add can never exceed what the missing providers last submitted in total. Front end: affected ICBs work like England (grey
+line on the waiting-list chart, cards use the estimate, estimate in hover boxes and tables, note under the chart saying the
+estimate is the dashboard's own using NHS England's method) AND the affected months are drawn hollow and dashed on all three
+charts, with an "incomplete month" legend entry and the missing provider named in the hover box. Not done for England (a
+provider has been missing in most months since mid-2025) or treatment-function views. `contrib` now holds each provider's
+full metrics per ICB, not just its total. ICB estimates and marks first appear after the next real refresh (they need the raw
+NHS files); checked in the browser with a sample of the data the pipeline produces. Tooltips near a chart edge now stay inside
+the panel. Then trimmed for clutter (user request): the ICB "Missing data" note only names the providers and months; the legend
+entry is just "incomplete month"; the ICB note under the chart is cut to what the marks mean and where the estimate is. **Trusts that did not submit (user request):** a provider's
+series simply skipped missing months, so the time axis CLOSED the gap (Manchester R0A: Sep 2022 sat next to Jan 2023). Now
+`padGaps` puts the missing months back as empty months on all three charts, with no line across them, a shaded band labelled
+"not submitted", a "no data submitted" legend entry, and "No data submitted" in the data table. An ongoing gap runs to the
+latest England month (Nottingham RX1 shows a shaded Sep 2026). No estimate is drawn for a trust (it would only repeat its
+last figure). The trust's top note is trimmed to the same style as the ICB one. Cards still show the trust's latest
+submitted month. Then (user requests): the shaded band fills the whole stretch between the submitted months either side; and on
+ICB charts with estimates the legend reads "reported data", "incomplete data" and "estimated data" (England keeps its longer
+labels), with the note under the chart reworded to match, in the same shape as the England note ("Reported and estimated data. ...").
+The "summary cards above use ..." sentence was then dropped from both notes (user: redundant); the footer now states it once,
+and its missing-data paragraph was rewritten to cover England (NHS estimate), affected ICBs (this dashboard's estimate, same
+method), the cards, and trust gaps. The footer was trimmed so it does not repeat that note: it now only says NHS England's estimates cover England as a
+whole, and that trust and ICB figures are as reported with a note where a provider's data is missing. Also fixed: the % chart tooltip used the milestone-stretched axis even when milestones were switched off.
 **Known limits:** RTT chart downloads have no legend (unchanged), so the grey line appears unlabelled in exports. Sheffield
 (RHQ) is still hidden from the provider picker by the inactivity rule, so its note is only reachable by link (`?org=RHQ`).
 **Verified locally:** 101 tests pass (8 new in `tests_rtt/test_estimates.py`); headless render of England (all measures), RX1,

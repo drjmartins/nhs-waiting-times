@@ -96,9 +96,9 @@ def test_missing_submissions_flags_trust_gaps_and_affected_icbs():
         ("provider", "NTINY"): {"2026-06": _m(40)},                                              # tiny: ignored
         ("provider", "ROLD"): {"2026-06": _m(9000)},                                             # former: ignored
     }
-    contrib = {("QT1", "2026-08"): {"RX1": 70000, "RZZ": 400000},
-               ("QBIG", "2026-08"): {"RX1": 900, "RYY": 2000000},          # too small a share
-               ("QK9", "2026-06"): {"RK9": 40000, "RAA": 100000}}
+    contrib = {("QT1", "2026-08"): {"RX1": _m(70000), "RZZ": _m(400000)},
+               ("QBIG", "2026-08"): {"RX1": _m(900), "RYY": _m(2000000)},          # too small a share
+               ("QK9", "2026-06"): {"RK9": _m(40000), "RAA": _m(100000)}}
     names = {("provider", "RX1"): "NOTTINGHAM", ("provider", "RK9"): "PLYMOUTH"}
     cls = {"ROLD": {"status": "former"}}
     prov, icb = build.missing_submissions(orgs, contrib, months, names, cls)
@@ -119,7 +119,9 @@ def test_process_zip_records_provider_contribution_per_icb(tmp_path):
                    row(prov="RAA", icb="QAA", tf="C_100", bandvals={0: 7})])
     contrib = {}
     build.process_zip(zp, defaultdict(build._blank_metrics), defaultdict(build._blank_metrics), {}, {}, contrib)
-    assert contrib == {("QAA", "2026-03"): {"RAA": 7, "RBB": 3}}      # C_999 only
+    got = {k: {p: v["total"] for p, v in provs.items()} for k, provs in contrib.items()}
+    assert got == {("QAA", "2026-03"): {"RAA": 7, "RBB": 3}}      # C_999 only
+    assert contrib[("QAA", "2026-03")]["RAA"]["within18"] == 7
 
 
 def test_missing_submissions_only_counts_gaps_nhs_england_also_estimated():
@@ -129,3 +131,22 @@ def test_missing_submissions_only_counts_gaps_nhs_england_also_estimated():
     gap = {"2026-07": 0, "2026-08": 86000, "2026-09": 86000}   # stopped reporting RTT, not missing
     prov, _ = build.missing_submissions(orgs, {}, months, {}, nhs_gap=gap)
     assert set(prov) == {"RX1"}
+
+
+def test_icb_estimates_carry_forward_the_missing_providers_last_contribution():
+    months = ["2026-07", "2026-08", "2026-09"]
+    def mm(total, w18, w52=0):
+        return {"within18": w18, "total": total, "w52": w52, "w65": 0, "w78": 0, "w104": 0}
+    orgs = {("icb", "QT1"): {"2026-07": mm(120000, 80000, 900), "2026-08": mm(127000, 81000, 1000),
+                             "2026-09": mm(54000, 36000, 300)}}
+    contrib = {("QT1", "2026-08"): {"RX1": mm(73000, 45000, 700), "RZZ": mm(54000, 36000, 300)}}
+    by_provider = {"RX1": [{"from": "2026-09", "to": None, "last_waitlist": 86000}]}
+    by_icb = {"QT1": [{"code": "RX1", "from": "2026-09", "to": None}]}
+    est, add = build.icb_estimates(orgs, contrib, by_provider, by_icb, months)
+    assert est["QT1"]["waitlist"] == {"2026-07": 120000, "2026-08": 127000, "2026-09": 127000}
+    assert est["QT1"]["pct18"]["2026-09"] == round(81000 / 127000, 4)
+    assert est["QT1"]["w52"]["2026-09"] == 1000
+    assert add[("QT1", "2026-09")]["total"] == 73000
+    # an ICB without a material exclusion gets no estimate
+    est2, _ = build.icb_estimates(orgs, contrib, by_provider, {}, months)
+    assert est2 == {}

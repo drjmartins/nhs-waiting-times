@@ -123,14 +123,13 @@
   .bigpanel .ttl{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 6px}
   .bigpanel .ttl h2{margin:0;font-size:18px;letter-spacing:-.01em}
   .bigpanel .ttl .tag{font-family:inherit;font-size:11px;color:var(--ink-soft)}
-  /* Legend: single line — org series + its uncertain states, a "|" boundary, then the
-     reference lines. Wraps gracefully on narrow widths; one line at normal width. */
+  /* Legend: single line — org series + its uncertain states, then the reference lines,
+     all separated by dots (the "|" group boundary was dropped 2026-11-20). Wraps gracefully on narrow widths; one line at normal width. */
   .legend{display:flex;flex-wrap:wrap;align-items:center;gap:7px;
     font-family:ui-monospace,Menlo,monospace;font-size:11px;
     color:var(--ink-soft);margin:2px 0 4px}
   .legend .lgitem{display:inline-flex;align-items:center;white-space:nowrap}
   .legend .lgsep{opacity:.4}
-  .legend .lgbar{opacity:.4;padding:0 3px}              /* "|" group boundary */
   .chartbox{position:relative}
   .chartbox svg{display:block;width:100%;height:auto}
   .pt{cursor:pointer}
@@ -331,9 +330,9 @@
       <span class="rangewrap" id="rangewrap">
         <span class="flabel">Time range</span>
         <span class="rangebtns" id="rangebtns" role="group" aria-label="Time range">
+          <button type="button" class="rangebtn" data-range="all" aria-pressed="false">All</button>
           <button type="button" class="rangebtn" data-range="3y" aria-pressed="false">3 years</button>
           <button type="button" class="rangebtn" data-range="12m" aria-pressed="false">12 months</button>
-          <button type="button" class="rangebtn" data-range="all" aria-pressed="false">All</button>
         </span>
       </span>
     </div>
@@ -342,6 +341,8 @@
     <div id="lowrel" class="lowrel" hidden></div>
   </div>
 
+  <!-- Target-change banner: shown only for a standard whose target changed (FDS28). -->
+  <div class="orgnote" id="targetnote" style="margin:14px 0 0" hidden></div>
   <!-- Oct-2023 comparability banner: sits BELOW the chart (the dashed in-chart
        marker on CMB31/CMB62 flags the break point itself). -->
   <div class="note" id="breaknote">Loading&hellip;</div>
@@ -398,11 +399,11 @@ const ptypeOf = o => o.ptype==="independent" ? "independent" : "trust";  // abse
 //            group. Selecting a group hides AND resets it (see selectGroup).
 let GROUP=null, ROUTE=null, MOD=null;
 // Big-chart time-range: a FIXED rolling window (last-N months) so the chart stays a
-// constant width as NHS publishes more months. Default 3 years; applies to ALL
+// constant width as NHS publishes more months. Default All (was 3 years until 2026-11-20); applies to ALL
 // standards (not standard-aware). "all" = the full series. Display-only — the cards'
 // own recent-trend sparklines are unaffected.
 const RANGE_MONTHS={"3y":36,"12m":12,"all":Infinity};
-let RANGE="3y";
+let RANGE="all";   // default: all months (user decision 2026-11-20; was "3y")
 // Show/hide the grey England comparison overlay (providers + commissioners only).
 // Default ON. On the England tab the org's own line IS England, so the toggle is
 // hidden there. Persists across org/standard switches and carries into the expand
@@ -421,32 +422,34 @@ let ACTIVE_NAT=null;                           // national series currently over
 
 const ABBR=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const fmt = p => (p*100).toFixed(1)+"%";
+// Targets are always whole percentages, so they are shown without a decimal (80%, not 80.0%).
+const fmtTarget = p => Math.round(p*100)+"%";
 const monthLabel = m => {const[y,mm]=m.split("-");return ABBR[+mm-1]+" "+y.slice(2);};
 const tipMonth   = m => {const[y,mm]=m.split("-");return ABBR[+mm-1]+" "+y;};
 const _MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
 const fullMonth = m => {const[y,mm]=m.split("-");return _MN[+mm-1]+" "+y;};
 const isoDate = iso => {const[y,m,d]=iso.slice(0,10).split("-");return (+d)+" "+_MN[+m-1]+" "+y;};
 
-// Footer sentence for any standard whose target changed over time (England payload).
-function targetNoteHTML(){
-  const out=[];
-  for(const [code,s] of Object.entries((NATIONAL&&NATIONAL.standards)||{})){
-    const sch=s.target_schedule; if(!sch || sch.length<2) continue;
-    const parts=sch.map(([from,v],i)=>{
-      const until=i<sch.length-1 ? prevMonth(sch[i+1][0]) : null;
-      return i===0 ? `${fmt(v)} up to ${fullMonth(until)}` : `${fmt(v)} from ${fullMonth(from)}`;
-    });
-    out.push(`The ${s.label} target line shows ${parts.join(" and ")}, following NHS England planning guidance; the published standard remains ${fmt(sch[0][1])}.`);
-  }
-  return out.length ? out.join(" ")+"<br><br>" : "";
+// Banner under the chart for the SELECTED standard when its target changed over time (moved
+// from the footer 2026-11-20, user request); hidden for standards with a single target.
+function renderTargetNote(){
+  const box=document.getElementById("targetnote"); if(!box) return;
+  const s=NATIONAL && NATIONAL.standards && NATIONAL.standards[CURRENT_STD];
+  const sch=s && s.target_schedule;
+  if(!sch || sch.length<2){ box.hidden=true; box.innerHTML=""; return; }
+  const parts=sch.map(([from,v],i)=>{
+    const until=i<sch.length-1 ? prevMonth(sch[i+1][0]) : null;
+    return i===0 ? `${fmtTarget(v)} up to ${fullMonth(until)}` : `${fmtTarget(v)} from ${fullMonth(from)}`;
+  });
+  box.innerHTML=`<b>Target change.</b> The target line shows ${parts.join(" and ")}, following NHS England planning guidance; `+
+    `the published standard remains ${fmtTarget(sch[0][1])}.`;
+  box.hidden=false;
 }
 const prevMonth = m => {let [y,mm]=m.split("-").map(Number); mm--; if(mm<1){mm=12;y--;} return y+"-"+String(mm).padStart(2,"0");};
 function footerHTML(META){
   const latest=fullMonth(META.months[META.months.length-1]), built=isoDate(META.built_at);
   return `Data source: <a href="https://www.england.nhs.uk/statistics/statistical-work-areas/cancer-waiting-times/" target="_blank" rel="noopener">NHS England Cancer Waiting Times statistics</a>, published monthly and used here under the Open Government Licence v3.0. This dashboard is an independent tool and is not affiliated with or endorsed by NHS England.<br><br>`+
     `Data to ${latest}. Last updated ${built}. Figures for the most recent months are provisional and subject to revision.<br><br>`+
-    // Target note: generated from the data, so it only appears while a standard has a stepped target.
-    targetNoteHTML()+
     // Transparency note for the picker hiding (see build_site_data._negligible_orgs).
     `Organisations with very little recent activity (for providers, no standard reaching at least 10 patients in a single month over the last year; for commissioners, very low recent total volume) are hidden.`;
   // (The Oct-2023 comparability note now lives in the amber banner below the chart
@@ -775,7 +778,7 @@ function renderCards(){
         `<div class="stdcode">${std}${grouped?" &middot; "+GROUP:""}</div>
          <h3>${title}</h3>
          <div class="figure"><b class="${lowLast?'muted':''}">${fmt(cur)}</b>
-           <span class="vs ${meets?'meets':'under'}">${meets?'&#10003; meets':'&#9660; below'} ${fmt(tgt)} target</span></div>
+           <span class="vs ${meets?'meets':'under'}">${meets?'&#10003; meets':'&#9660; below'} ${fmtTarget(tgt)} target</span></div>
          <div class="spark">${sparkSVG(s)}</div>
          <div class="mon">latest ${tipMonth(s.months[last])} &middot; ${s.data_status[last]}`+
            (lowLast?` &middot; <span class="lowtag">n=${(+s.total[last])}, low reliability</span>`:``)+`</div>`;
@@ -823,7 +826,7 @@ function sparkSVG(s){
   const dot = low(last) ? `fill="#fff" stroke="var(--org-muted)" stroke-width="1.4"`
                         : `fill="${meets?'var(--org)':'var(--target)'}"`;
   const trend = vals[k-1]>vals[0]?"rising":vals[k-1]<vals[0]?"falling":"broadly flat";
-  const slab=`Trend sparkline: ${trend} over the last ${k} months, latest ${fmt(vals[k-1])} versus a ${fmt(tg[k-1])} target.`;
+  const slab=`Trend sparkline: ${trend} over the last ${k} months, latest ${fmt(vals[k-1])} versus a ${fmtTarget(tg[k-1])} target.`;
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="${escAttr(slab)}">
     <path d="${targetPath(tg,x,y)}" fill="none" stroke="var(--target)" stroke-dasharray="3 2" stroke-width="1.1"/>
     ${path}
@@ -1108,6 +1111,7 @@ function renderBig(){
   // Oct-2023 comparability banner applies to CMB31/CMB62 only — hide it on FDS28
   // (the 28-day standard has no break), matching the in-chart marker.
   document.getElementById("breaknote").hidden = (CURRENT_STD==="FDS28");
+  renderTargetNote();
   const sAll=CURRENT.standards[CURRENT_STD];
   const orgFull=activeOrgSeries();
   // Title carries the cancer group ALWAYS (incl. "All cancers"); the route/modality
@@ -1137,8 +1141,8 @@ function renderBig(){
   ACTIVE_NAT = (SHOW_ENGLAND && !CURRENT.isNational && nat && nat.performance && nat.performance.length) ? nat : null;
   const hasLow = org.total.some(v=>(+v)<THRESH);
   // Legend on ONE line, mirroring the chart EXACTLY (line style + marker shape). The
-  // org series + its two uncertain states come first, then a "|" boundary, then the
-  // reference lines. Labels are organisation-only (the slice is named in the title).
+  // org series + its two uncertain states come first, then the reference lines, all
+  // separated by dots. Labels are organisation-only (the slice is named in the title).
   // Both uncertain states share the SAME lighter navy (--org-muted) and are told apart
   // ONLY by shape + dash: provisional = open CIRCLE + dashed; low-reliability = open
   // SQUARE + dotted. Normal/final keeps the strong solid navy + filled circle.
@@ -1148,11 +1152,11 @@ function renderBig(){
   const low_ = item(`stroke="var(--org-muted)" stroke-width="1.8" stroke-dasharray="1.5 3" opacity="0.9"`,`fill="#fff" stroke="var(--org-muted)" stroke-width="1.6"`,true,`low reliability (n&lt;${THRESH})`);
   const nat_ = item(`stroke="var(--nat)" stroke-width="1.6" opacity="0.85"`,null,false,"England");
   const tgt_ = item(`stroke="var(--target)" stroke-width="1.4" stroke-dasharray="5 4"`,null,false,"target");
-  const sep=`<span class="lgsep">&middot;</span>`, bar=`<span class="lgbar">|</span>`;
+  const sep=`<span class="lgsep">&middot;</span>`;   // one separator throughout the legend
   // Order: org line, then low-reliability, then provisional, then the reference lines.
   const orgGroup=[org_].concat(hasLow?[low_]:[],[prov_]).join(sep);
   const refGroup=(ACTIVE_NAT?[nat_,tgt_]:[tgt_]).join(sep);
-  document.getElementById("legend").innerHTML = orgGroup + bar + refGroup;
+  document.getElementById("legend").innerHTML = orgGroup + sep + refGroup;
   box.innerHTML = bigSVG(org, ACTIVE_NAT) + bigTableHTML(org, ACTIVE_NAT) + `<div class="tip" id="tip"></div>`;
   attachTips(org);
   announce(bigSummary(org, ACTIVE_NAT));
@@ -1187,6 +1191,7 @@ function legendSwatch(lineAttrs, markAttrs, square){
 // P.r reserves a RIGHT MARGIN for the "target NN.N%" label, so it sits level with the
 // target line outside the plot, never covering the org/England series.
 const BG={W:920,H:380,P:{l:46,r:76,t:36,b:30}};
+const LBL_GAP=6;   // space between the end of a dashed reference line and its margin label
 function bigScales(s, nat){
   const xs=s.months, n=xs.length;
   const vals=s.performance.concat(targetsFor(s,s.months));
@@ -1209,8 +1214,8 @@ function bigSummary(s, nat){
   const who=CURRENT.isNational?"England":CURRENT.name;
   return `${title}, ${who}. Line chart of the monthly percentage treated within standard, `+
     `${tipMonth(s.months[0])} to ${tipMonth(s.months[last])}. Latest ${tipMonth(s.months[last])}: `+
-    `${fmt(cur)}, ${meets?"at or above":"below"} the ${fmt(tgt)} target`+
-    (t0!==tgt?` (the target line steps up from ${fmt(t0)} during this period)`:``)+
+    `${fmt(cur)}, ${meets?"at or above":"below"} the ${fmtTarget(tgt)} target`+
+    (t0!==tgt?` (the target line steps up from ${fmtTarget(t0)} during this period)`:``)+
     (nat?`; England comparison shown`:``)+`. Full figures are in the data table below the chart.`;
 }
 function bigSVG(s, nat){
@@ -1246,17 +1251,10 @@ function bigSVG(s, nat){
   // Stepped where the target changed inside the window (see targetAt); flat otherwise.
   const tg=targetsFor(s,s.months), tLast=tg[n-1], ty=y(tLast);
   // Label sits in the right margin (see BG.P.r), vertically centred on the CURRENT end of
-  // the target line, right-aligned to the SVG edge — clear of the plotted series.
-  let tline=`<path d="${targetPath(tg,x,y)}" fill="none" stroke="var(--target)" stroke-dasharray="5 4" stroke-width="1.4"/>`+
-    `<text x="${W-3}" y="${(ty+3.5).toFixed(1)}" font-size="10" text-anchor="end" fill="var(--target-text)">target ${fmt(tLast)}</text>`;
-  // Earlier level(s): a small label on each earlier flat run, just before the step.
-  for(let i=1;i<n;i++){
-    if(tg[i]!==tg[i-1]){
-      const xm=(x(i-1)+x(i))/2, up=tg[i]>tg[i-1];
-      tline+=`<text x="${(xm-6).toFixed(1)}" y="${(y(tg[i-1])+(up?13:-6)).toFixed(1)}" font-size="9.5" text-anchor="end" `+
-        `fill="var(--target-text)">${fmt(tg[i-1])} to ${tipMonth(s.months[i-1])}</text>`;
-    }
-  }
+  // the target line, starting LBL_GAP px after the line ends — clear of the plotted series.
+  const tline=`<path d="${targetPath(tg,x,y)}" fill="none" stroke="var(--target)" stroke-dasharray="5 4" stroke-width="1.4"/>`+
+    `<text x="${W-P.r+LBL_GAP}" y="${ty.toFixed(1)}" dominant-baseline="central" font-size="10" text-anchor="start" fill="var(--target-text)">target ${fmtTarget(tLast)}</text>`;
+  // (The earlier "75.0% to Mar 2026" in-chart label was removed 2026-11-20; the banner below the chart explains the step.)
   // national overlay: a faint SOLID grey reference line, aligned by MONTH (robust
   // to slices that skip months). Deliberately solid, NOT dashed: "dashed" is
   // reserved for the org series' own states (provisional = lighter navy dashed,
@@ -1294,7 +1292,7 @@ function bigSVG(s, nat){
   // 12-month window isn't sparse and a multi-year/"all" window doesn't collide). The
   // last month is always labelled; loop labels stop short of it to avoid a collision.
   let xl="";
-  const lstep=Math.max(1,Math.ceil(n/8)), guard=Math.ceil(lstep/2);
+  const lstep=Math.max(1,Math.ceil(n/8)), guard=Math.ceil(lstep*0.75);   // was lstep/2: the last two labels crowded in the default "All" view
   for(let i=0;i<n-guard;i+=lstep) xl+=`<text x="${x(i).toFixed(1)}" y="${H-8}" font-size="10" text-anchor="middle" fill="var(--ink-soft)">${monthLabel(xs[i])}</text>`;
   xl+=`<text x="${x(n-1).toFixed(1)}" y="${H-8}" font-size="10" text-anchor="end" fill="var(--ink-soft)">${monthLabel(xs[n-1])}</text>`;
   // Point markers. Per-point state is MUTUALLY EXCLUSIVE, provisional wins. Both
@@ -1458,12 +1456,11 @@ function exportLegendSVG(x0, baseline, isNationalOrg, hasNat, hasLow){
   items.push({ln:'stroke="var(--org)" stroke-width="2.4"', mk:"circle", mka:'fill="var(--org)"', t:isNationalOrg?"England":"this organisation"});
   if(hasLow) items.push({ln:'stroke="var(--org-muted)" stroke-width="1.8" stroke-dasharray="1.5 3" opacity="0.9"', mk:"square", mka:'fill="#fff" stroke="var(--org-muted)" stroke-width="1.6"', t:"low reliability (n<"+THRESH+")"});
   items.push({ln:'stroke="var(--org-muted)" stroke-width="1.8" stroke-dasharray="6 4" opacity="0.9"', mk:"circle", mka:'fill="#fff" stroke="var(--org-muted)" stroke-width="1.6"', t:"provisional"});
-  const refIdx=items.length;   // "|" boundary before the reference lines
   if(hasNat) items.push({ln:'stroke="var(--nat)" stroke-width="1.6" opacity="0.85"', mk:null, t:"England"});
   items.push({ln:'stroke="var(--target)" stroke-width="1.4" stroke-dasharray="5 4"', mk:null, t:"target"});
   let x=x0, out="";
   items.forEach((it,i)=>{
-    if(i===refIdx){ out+=`<text x="${(x+2).toFixed(1)}" y="${baseline}" font-size="11" fill="var(--line)">|</text>`; x+=14; }
+    if(i>0){ out+=`<text x="${(x-11).toFixed(1)}" y="${baseline}" font-size="11" fill="var(--ink-soft)" opacity="0.4">\u00b7</text>`; }
     out+=`<line x1="${x.toFixed(1)}" y1="${baseline-4}" x2="${(x+26).toFixed(1)}" y2="${baseline-4}" fill="none" ${it.ln}/>`;
     if(it.mk==="circle") out+=`<circle cx="${(x+13).toFixed(1)}" cy="${baseline-4}" r="3" ${it.mka}/>`;
     else if(it.mk==="square") out+=`<rect x="${(x+9.5).toFixed(1)}" y="${baseline-7.5}" width="7" height="7" ${it.mka}/>`;
