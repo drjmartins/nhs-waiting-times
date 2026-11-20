@@ -577,8 +577,20 @@ function submissionNoteHTML(){
     return `<b>Missing data.</b> This provider did not submit RTT data ${spans}.`;
   }
   if(ex.length){
-    const items=ex.map(r=>`${xmlEsc(humanName(r.name))} (${monthSpan(r)})`).join("; ");
-    return `<b>Missing data.</b> Providers that did not submit RTT data: ${items}.`;
+    // Largest first (by the ICB pathways each provider last held). At most NOTE_MAX are named;
+    // the rest sit behind an "and N more providers" button that reveals them in place, so the
+    // note stays short as gaps accumulate over the years (DECISIONS 2026-11-20).
+    const NOTE_MAX=3;
+    const items=[...ex].sort((a,b)=>(b.last_contribution||0)-(a.last_contribution||0))
+      .map(r=>`${xmlEsc(noteName(r.name))} (${monthSpan(r)})`);
+    let list=items.slice(0,NOTE_MAX).join("; ");
+    if(items.length>NOTE_MAX){
+      const k=items.length-NOTE_MAX;
+      list+=`<span class="exmore" hidden>; ${items.slice(NOTE_MAX).join("; ")}</span>`+
+        `<span> <button type="button" class="rellink" `+
+        `onclick="const w=this.parentNode;w.previousElementSibling.hidden=false;w.remove()">and ${k} more provider${k>1?"s":""}</button></span>`;
+    }
+    return `<b>Missing data.</b> Providers treating this ICB's patients that did not submit RTT data: ${list}.`;
   }
   return "";
 }
@@ -1306,8 +1318,10 @@ function xmlEsc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").
 function escAttr(s){ return xmlEsc(s).replace(/"/g,"&quot;"); }
 function announce(msg){ const l=document.getElementById("live"); if(!l) return;
   l.textContent=""; setTimeout(()=>{ l.textContent=msg; },30); }
+// Shorter name for the missing-data note: drops a trailing "(formerly …)".
+function noteName(name){ return humanName(name.replace(/\s*\(FORMERLY[^)]*\)\s*$/i,"")); }
 function humanName(name){
-  const keep=new Set(["NHS","FT","ICB","UHB","HMP"]), small=new Set(["AND","OF","THE","FOR"]);
+  const keep=new Set(["NHS","FT","ICB","UHB","HMP","MSK"]), small=new Set(["AND","OF","THE","FOR"]);
   return name.split(/\s+/).map(w=>{ const u=w.toUpperCase();
     return keep.has(u)?u : small.has(u)?w.toLowerCase() : w.charAt(0).toUpperCase()+w.slice(1).toLowerCase(); }).join(" ");
 }
