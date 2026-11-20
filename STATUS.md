@@ -2,7 +2,7 @@
 
 At-a-glance project state. For the reasoning behind anything here, and the full history, see `DECISIONS.md`.
 
-_Last updated: 2026-11-16 (Claude session; rewritten as a short current-state page. The earlier deploy-by-deploy log,
+_Last updated: 2026-11-20 (Claude session; RTT estimates and chart refinements deployed. Rewritten as a short current-state page on 2026-11-16. The earlier deploy-by-deploy log,
 June to October 2026, was removed from this file: every entry is in `DECISIONS.md`, and the old text is in git history
 at commit c5e23ba)._
 
@@ -15,13 +15,15 @@ Two public dashboards on NHS England open data, hosted by the Surgical Data and 
   folders; an earlier Desktop copy was damaged that way).
 
 ## Current state
-- **Live and updating.** Data to September 2026 on both dashboards (refreshed 2026-11-12). 93 tests pass.
+- **Live and updating.** Data to September 2026 on both dashboards (refreshed 2026-11-12). 102 tests pass. Charts open on the full time range ("All").
 - **Cancer** (`/cancer/`): 28-day Faster Diagnosis, 31-day and 62-day combined standards, by provider and commissioner,
-  with cancer-group and referral-route breakdowns. FDS target is stepped: 75% to March 2026, 80% from April 2026.
+  with cancer-group and referral-route breakdowns. FDS target is stepped: 75% to March 2026, 80% from April 2026,
+  explained in a banner under the chart that shows only for that standard.
 - **RTT** (`/rtt/`): % within 18 weeks, waiting-list size and long waiters, by provider, commissioner and treatment function.
   The England chart has a tick box to show or hide the 65% / 70% recovery milestones.
   England charts and cards also show NHS England's figures including estimates for providers that did not submit;
-  trusts and ICBs affected by a missing submission carry a note. DECISIONS 2026-11-20.
+  trusts and ICBs affected by a missing submission carry a note; ICBs also get their own estimate and incomplete-month
+  marks once the next scheduled refresh has run. DECISIONS 2026-11-20.
 - **Design:** aligned with the host site (IBM Plex Sans, navy and magenta, lab header and footer). Charts and cards must
   stay on white panels for the colours to pass WCAG AA; see DECISIONS 2026-11-13.
 - **Navigation:** landing page cards lead to each dashboard; each dashboard has a single "Home" link.
@@ -54,6 +56,8 @@ Pull `master` first: the scheduled refresh adds data commits. For anything touch
 gates or deploy, read the relevant `DECISIONS.md` entries before changing code.
 
 ## Open items
+0. **Tell Obafunsho (John)** that the refresh now downloads NHS England's overview workbook and stops if it is missing
+   or mismatched, and check that his first run after 2026-11-20 brings in the ICB estimates.
 1. **Data cleaning** was listed as the next task in June and has not been scoped.
 2. **Deferred:** a cancer sub-type breakdown control. The data keeps the sub-type level; only the control is missing.
 3. **Not done by choice:** text inside charts (axes, legends, tooltips) is still monospace, and downloaded chart images

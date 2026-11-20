@@ -6,6 +6,15 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
+## 2026-11-20: DEPLOYED + LIVE-VERIFIED: RTT estimates and missing-data notes, default range "All", FDS target banner, whole-number targets and spaced target labels (Claude session)
+- Branch `rtt-estimates` (commit 97616b9) merged to `master`, branch deleted; published with "Update CWT + RTT data and deploy"
+  (`skip_fetch` true). Covers every 2026-11-20 entry below.
+- Live check: both pages serve the new button order (All · 3 years · 12 months); `/rtt/data/national.json` carries
+  `estimates` (waitlist, pct18, w52, w65, w78, w104), with a September 2026 waiting-list estimate of 7,375,866, matching
+  NHS England's published 7.38 million. 102 tests pass.
+- Still to come: ICB estimates and incomplete-month marks appear after the colleague's next scheduled refresh, which now
+  downloads NHS England's overview workbook and stops if it is missing or does not match our figures.
+
 ## 2026-11-20: Target values shown without decimals; margin labels spaced from and centred on their lines, BOTH dashboards (Claude session; user request)
 - Targets are always whole percentages, so every target value now reads "80%", not "80.0%" (cancer: `fmtTarget()` used in the
   chart label, the FDS banner, the card's "below 80% target", the sparkline and the chart's text summary; RTT's `targetPct()`
@@ -30,7 +39,7 @@ visible by default (it already was in the "All" view). Also: the x-axis no longe
 three-quarters of a step of the final one (was half), which crowded "May 26 Sep 26" in the All view. Shipped with the RTT
 estimates branch.
 
-## 2026-11-20 — RTT: NHS England's estimates for missing trusts added; missing-data notes on trusts and ICBs — BUILT on branch `rtt-estimates`, NOT deployed (Claude session; user decisions)
+## 2026-11-20 — RTT: NHS England's estimates for missing trusts added; missing-data notes on trusts and ICBs — DEPLOYED + LIVE-VERIFIED 2026-11-20 (Claude session; user decisions)
 
 **Why:** the user saw 7.07M on the dashboard against 7.38M on NHS England's RTT dashboard (Sep 2026). Not an error: our
 figure equals NHS's REPORTED total exactly (SPN Table 1, 7,074,324); NHS's headline adds estimates for providers that did
