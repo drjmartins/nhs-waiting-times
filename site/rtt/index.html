@@ -375,6 +375,7 @@ function footerHTML(M){
   const latest=fullMonth(M.months[M.months.length-1]), built=isoDate(M.built_at);
   return `Data source: <a href="https://www.england.nhs.uk/statistics/statistical-work-areas/rtt-waiting-times/" target="_blank" rel="noopener">NHS England Referral to Treatment (RTT) waiting times statistics</a>, published monthly and used here under the Open Government Licence v3.0. This dashboard is an independent tool and is not affiliated with or endorsed by NHS England.<br><br>`+
     `Data to ${latest}. Last updated ${built}.<br><br>`+
+    `Figures are as reported by providers. When a provider does not submit data for a month, NHS England's headline England figures add an estimate for it; this dashboard shows those estimated England figures as a grey line on the England charts and uses them on the England summary cards. Trust and ICB figures have no estimate and are noted where a provider's data is missing.<br><br>`+
     `Providers with very little recent activity (no month reaching 100 on the waiting list in the past year) are hidden. Non-English-commissioned activity is also excluded.`;
 }
 
@@ -559,10 +560,35 @@ const longDate = iso => { if(!iso) return ""; const[y,m]=iso.split("-"); return 
 // Generic, auto-generated lifecycle note (no hand-written per-merger text), built
 // from the index entry's ODS succession fields. Former → "Closed … — see related:";
 // newly-formed → "Formed … — see related:". Hidden when neither applies.
+// "Did not submit" notes (DECISIONS 2026-11-20): `not_submitted` on a provider and
+// `excludes` on an ICB come from the pipeline, which only flags gaps that NHS England
+// itself filled with an estimate. Returns HTML ("" when nothing to say).
+function monthSpan(r){
+  if(!r.to) return `from ${fullMonth(r.from)}`;
+  return r.from===r.to ? `in ${fullMonth(r.from)}` : `from ${fullMonth(r.from)} to ${fullMonth(r.to)}`;
+}
+function submissionNoteHTML(){
+  const ns=(CURRENT && CURRENT.not_submitted)||[], ex=(CURRENT && CURRENT.excludes)||[];
+  if(ns.length){
+    const ongoing=ns.some(r=>!r.to);
+    const spans=ns.map(monthSpan).join(", and ");
+    return `<b>Missing data.</b> This provider did not submit RTT data ${spans}, so those months are blank here`+
+      (ongoing?`; its figures resume when it submits again`:``)+
+      `. NHS England's England totals include an estimate for it.`;
+  }
+  if(ex.length){
+    const items=ex.map(r=>`${xmlEsc(humanName(r.name))} (${monthSpan(r)})`).join("; ");
+    return `<b>Missing data.</b> These figures exclude providers that did not submit RTT data: ${items}. `+
+      `Months they missed are understated, as NHS England publishes no estimate at ICB level.`;
+  }
+  return "";
+}
 function renderOrgNote(code){
   const box=document.getElementById("orgnote");
   const e=code ? (window._idx||[]).find(o=>o.code===code) : null;
-  if(!e || (!e.former && e.reltype!=="formed")){ box.hidden=true; box.innerHTML=""; return; }
+  const sub=code ? submissionNoteHTML() : "";
+  if(!e || (!e.former && e.reltype!=="formed")){
+    box.hidden=!sub; box.innerHTML=sub; return; }
   const rel=(e.related||[]).map(r=>{
     const known=(window._idx||[]).some(o=>o.code===r.code);
     return known ? `<button type="button" class="rellink" onclick="goToOrg('${r.code}')">${r.name}</button>`
@@ -580,7 +606,7 @@ function renderOrgNote(code){
         (rel.length?`, drawing on the area${rel.length>1?"s":""} of: ${rel.join(", ")}.`:".")+
         ` Earlier months are not available under this code.`;
   }
-  box.innerHTML=msg; box.hidden=false;
+  box.innerHTML=msg+(sub?"<br>"+sub:""); box.hidden=false;
 }
 
 function render(){
@@ -687,6 +713,30 @@ function countSeries(src, measure, thresh){
   return {months:src.months, value:lw["w"+thresh], label:`waiting more than ${thresh} weeks`, unit:`waiting > ${thresh} wks`};
 }
 
+// NHS England's own England figures WITH estimates for trusts that did not submit data that
+// month (national.json "estimates", from NHS's RTT Overview Timeseries; DECISIONS 2026-11-20).
+// Only exists for England as a whole and all treatment functions; null everywhere else.
+// Returns an array aligned to `months` (null where NHS publishes no figure).
+function estFor(key, months){
+  if(!(CURRENT && CURRENT.isNational && TF===null)) return null;
+  const e=NATIONAL && NATIONAL.estimates && NATIONAL.estimates[key]; if(!e) return null;
+  const a=months.map(m=> e[m]!=null ? +e[m] : null);
+  return a.some(v=>v!=null) ? a : null;
+}
+// Swap a series' values for NHS's estimated ones where they exist (England only).
+function withEst(series, key, field){
+  const e=estFor(key, series.months); if(!e) return series;
+  return Object.assign({}, series, {[field]: series[field].map((v,i)=> e[i]!=null ? e[i] : v)});
+}
+const EST_LABEL="incl. NHS England estimates for trusts that did not submit";
+// Legend entry for the estimate line; allowed to wrap so it reflows at 320px.
+const estLegend = item => item.replace('<span class="lgitem">','<span class="lgitem" style="white-space:normal">');
+function estPath(vals, x, y){
+  let d="",on=false;
+  for(let i=0;i<vals.length;i++){ const v=vals[i]; if(v==null){on=false;continue;}
+    d+=(on?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1)+" "; on=true; }
+  return d ? `<path d="${d.trim()}" fill="none" stroke="var(--nat)" stroke-width="2" stroke-linejoin="round"/>` : "";
+}
 // Clip parallel arrays to months >= minMonth (string compare on "YYYY-MM").
 function clipObj(s, minMonth){
   if(!s||!s.months||!s.months.length||minMonth==null) return s;
@@ -722,15 +772,19 @@ function renderCards(){
     }
     card.className="scard"+(m.key===MEASURE?" active":"");
     let body;
+    // England (all treatment functions): the cards show NHS England's own headline
+    // figures, i.e. WITH estimates for providers that did not submit (DECISIONS
+    // 2026-11-20), so the year-on-year change isn't distorted by providers dropping out.
+    const estNote = estFor("waitlist", NATIONAL.months) ? ` &middot; incl. estimates for missing trusts` : ``;
     if(m.kind==="rate"){
-      const s=rateSeries(src); const last=s.performance.length-1;
+      const s=withEst(rateSeries(src), "pct18", "performance"); const last=s.performance.length-1;
       const cur=s.performance[last], meets=cur>=s.target;
       body=`<div class="figure"><b>${fmtPct(cur)}</b>
           <span class="vs ${meets?'meets':'under'}">${meets?'&#10003; meets':'&#9660; below'} ${targetPct()} target</span></div>
         <div class="spark">${sparkRate(s)}</div>
-        <div class="mon">latest ${tipMonth(s.months[last])}</div>`;
+        <div class="mon">latest ${tipMonth(s.months[last])}${estNote}</div>`;
     } else {
-      const s=countSeries(src, m.key, LWTHRESH); const last=s.value.length-1;
+      const s=withEst(countSeries(src, m.key, LWTHRESH), m.key==="waitlist"?"waitlist":"w"+LWTHRESH, "value"); const last=s.value.length-1;
       const cur=+s.value[last];
       const sub = m.key==="longwait" ? `&gt; ${LWTHRESH} wks` : `patients waiting`;
       // Honest comparison: only show a year-on-year delta when there IS a year-ago
@@ -739,11 +793,13 @@ function renderCards(){
       if(last>=12){
         const yoy=+s.value[last-12], delta=cur-yoy, dpct=yoy?delta/yoy*100:0;
         const better=delta<0, arrow=delta===0?"":(delta<0?"&#9660;":"&#9650;");
-        vs=`<span class="vs ${better?'meets':'under'}">${arrow} ${Math.abs(dpct).toFixed(0)}% vs yr ago</span>`;
+        // One decimal below 1% so a small change doesn't read as "0%".
+        const mag=Math.abs(dpct), shown=mag<1 ? mag.toFixed(1) : mag.toFixed(0);
+        vs=`<span class="vs ${better?'meets':'under'}">${arrow} ${shown}% vs yr ago</span>`;
       } else vs=`<span class="vs">no year-ago data</span>`;
       body=`<div class="figure"><b>${fmtCompact(cur)}</b>${vs}</div>
         <div class="spark">${sparkCount(s)}</div>
-        <div class="mon">${sub} &middot; latest ${tipMonth(s.months[last])}</div>`;
+        <div class="mon">${sub} &middot; latest ${tipMonth(s.months[last])}${estNote}</div>`;
     }
     card.innerHTML=`${eyebrow}<h3>${m.title}</h3>${body}`;
     card.addEventListener("click",pick);
@@ -853,6 +909,7 @@ function renderRate(){
   document.getElementById("bigttl").textContent = "% within 18 weeks"+titleSuffix();
   const minMonth=firstVisibleMonth(full.months);
   const s=clipObj(full, minMonth);
+  s.est=estFor("pct18", s.months);
   let nat=null;
   if(SHOW_ENGLAND && !CURRENT.isNational){ const ns=activeNatSource(); if(ns) nat=clipObj(rateSeries(ns), minMonth); }
   ACTIVE_NAT = nat;
@@ -869,7 +926,8 @@ function renderRate(){
   const ms_=item(`stroke="var(--milestone)" stroke-width="1.2" stroke-dasharray="2 3"`,null,false,"recovery milestones");
   const sep=`<span class="lgsep">&middot;</span>`, bar=`<span class="lgbar">|</span>`;
   const orgGroup=[org_].concat(hasLow?[low_]:[]).join(sep);
-  const refGroup=(nat?[nat_]:[]).concat([tgt_], showMs?[ms_]:[]).join(sep);
+  const est_=item(`stroke="var(--nat)" stroke-width="2"`,null,false,"England "+EST_LABEL);
+  const refGroup=(nat?[nat_]:[]).concat(s.est?[estLegend(est_)]:[], [tgt_], showMs?[ms_]:[]).join(sep);
   document.getElementById("legend").innerHTML = orgGroup + bar + refGroup;
   document.getElementById("chartbox").innerHTML = rateSVG(s,nat,showMs) + rateTableHTML(s,nat) + `<div class="tip" id="tip"></div>`;
   attachTips(s, "rate");
@@ -877,7 +935,7 @@ function renderRate(){
 }
 function rateScales(s,nat,showMs){
   const xs=s.months,n=xs.length;
-  const vals=s.performance.concat([s.target]);
+  const vals=s.performance.concat([s.target], (s.est||[]).filter(v=>v!=null));
   if(showMs) vals.push(0.65,0.70);   // only stretch the axis to the milestones when they're drawn
   if(nat) vals.push(...nat.performance);
   let lo=Math.min(...vals), hi=Math.max(...vals);
@@ -934,7 +992,7 @@ function rateSVG(s,nat,showMs){
   const aria=rateSummary(s,nat);
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${escAttr(aria)}">`+
     `<title>${xmlEsc(document.getElementById("bigttl").textContent)}</title><desc>${xmlEsc(aria)}</desc>`+
-    `${g}${mark}${ms}${natpath}${tline}${line}${xAxisSVG(xs,x)}${pts}</svg>`;
+    `${g}${mark}${ms}${natpath}${s.est?estPath(s.est,x,y):""}${tline}${line}${xAxisSVG(xs,x)}${pts}</svg>`;
 }
 
 /* ----- count chart (waiting list / long waiters): numeric auto-scaling axis, no target ----- */
@@ -946,10 +1004,12 @@ function renderCount(){
   document.getElementById("bigttl").textContent = baseTitle+titleSuffix();
   const minMonth=firstVisibleMonth(full.months);
   const s=clipObj(full, minMonth);
+  s.est=estFor(MEASURE==="waitlist"?"waitlist":"w"+LWTHRESH, s.months);
   ACTIVE_NAT=null;   // no England overlay for counts (scale)
   const item=(sw,mk,label)=>`<span class="lgitem">${legendSwatch(sw,mk,false)}${label}</span>`;
   document.getElementById("legend").innerHTML =
     item(`stroke="var(--org)" stroke-width="2.4"`,`fill="var(--org)"`,CURRENT.isNational?"England":"this organisation") +
+    (s.est?`<span class="lgsep">&middot;</span>`+estLegend(item(`stroke="var(--nat)" stroke-width="2"`,null,"England "+EST_LABEL)):"")+
     `<span class="lgsep">&middot;</span><span class="lgitem" style="color:var(--ink-soft)">${xmlEsc(s.unit)}</span>`;
   document.getElementById("chartbox").innerHTML = countSVG(s) + countTableHTML(s) + `<div class="tip" id="tip"></div>`;
   attachTips(s, "count");
@@ -963,7 +1023,7 @@ function niceTop(max){
   return mult*Math.pow(10,exp);
 }
 function countScales(s){
-  const xs=s.months,n=xs.length, vals=s.value.map(Number);
+  const xs=s.months,n=xs.length, vals=s.value.map(Number).concat((s.est||[]).filter(v=>v!=null));
   const top=niceTop(Math.max(...vals,1)), lo=0, hi=top;
   const {W,H,P}=BG;
   return {xs,n,lo,hi, x:i=>P.l+(i/(n>1?n-1:1))*(W-P.l-P.r), y:v=>P.t+(1-(v-lo)/((hi-lo)||1))*(H-P.t-P.b)};
@@ -990,7 +1050,7 @@ function countSVG(s){
   const aria=countSummary(s);
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${escAttr(aria)}">`+
     `<title>${xmlEsc(document.getElementById("bigttl").textContent)}</title><desc>${xmlEsc(aria)}</desc>`+
-    `${g}${mark}${line}${xAxisSVG(xs,x)}${pts}</svg>`;
+    `${g}${mark}${s.est?estPath(s.est,x,y):""}${line}${xAxisSVG(xs,x)}${pts}</svg>`;
 }
 
 /* ---------- chart text alternatives (summaries + visually-hidden data tables) ---------- */
@@ -1013,14 +1073,14 @@ function rateTableHTML(s,nat){
   const natBy={}; if(nat) nat.months.forEach((mo,j)=>natBy[mo]=nat.performance[j]);
   const title=document.getElementById("bigttl").textContent, who=CURRENT.isNational?"England":CURRENT.name;
   let head=`<tr><th scope="col">Month</th><th scope="col">% within 18 weeks</th>`+
-    `<th scope="col">Within 18 weeks / total</th><th scope="col">Data status</th>`+(nat?`<th scope="col">England %</th>`:``)+`</tr>`;
+    `<th scope="col">Within 18 weeks / total</th><th scope="col">Data status</th>`+(nat?`<th scope="col">England %</th>`:``)+(s.est?`<th scope="col">% incl. estimates for missing trusts</th>`:``)+`</tr>`;
   let rows="";
   for(let i=0;i<s.performance.length;i++){
     const low=(+s.total[i])<THRESH;
     const stat= low?`Final, low reliability (n=${+s.total[i]}, under ${THRESH})`:"Final";
     const nv=nat?(natBy[s.months[i]]!=null?fmtPct(natBy[s.months[i]]):"—"):null;
     rows+=`<tr><td>${tipMonth(s.months[i])}</td><td>${fmtPct(s.performance[i])}</td>`+
-      `<td>${commas(s.within_target[i])} of ${commas(s.total[i])}</td><td>${stat}</td>`+(nat?`<td>${nv}</td>`:``)+`</tr>`;
+      `<td>${commas(s.within_target[i])} of ${commas(s.total[i])}</td><td>${stat}</td>`+(nat?`<td>${nv}</td>`:``)+(s.est?`<td>${s.est[i]!=null?fmtPct(s.est[i]):"—"}</td>`:``)+`</tr>`;
   }
   return `<div class="vh"><table><caption>Data table: ${xmlEsc(title)}, ${xmlEsc(who)} — the figures plotted above.</caption>`+
     `<thead>${head}</thead><tbody>${rows}</tbody></table></div>`;
@@ -1028,9 +1088,9 @@ function rateTableHTML(s,nat){
 function countTableHTML(s){
   const title=document.getElementById("bigttl").textContent, who=CURRENT.isNational?"England":CURRENT.name;
   let rows="";
-  for(let i=0;i<s.value.length;i++) rows+=`<tr><td>${tipMonth(s.months[i])}</td><td>${commas(s.value[i])}</td></tr>`;
+  for(let i=0;i<s.value.length;i++) rows+=`<tr><td>${tipMonth(s.months[i])}</td><td>${commas(s.value[i])}</td>`+(s.est?`<td>${s.est[i]!=null?commas(s.est[i]):"—"}</td>`:``)+`</tr>`;
   return `<div class="vh"><table><caption>Data table: ${xmlEsc(title)}, ${xmlEsc(who)} — ${xmlEsc(s.label)}, the figures plotted above.</caption>`+
-    `<thead><tr><th scope="col">Month</th><th scope="col">${xmlEsc(s.unit)}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    `<thead><tr><th scope="col">Month</th><th scope="col">${xmlEsc(s.unit)}</th>`+(s.est?`<th scope="col">Incl. estimates for missing trusts</th>`:``)+`</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function legendSwatch(lineAttrs, markAttrs, square){
   const mark = !markAttrs ? ``
@@ -1055,13 +1115,15 @@ function showTip(i, s, kind){
   let sc, vy, html;
   if(kind==="rate"){
     if(i<0||i>=s.performance.length) return;
-    sc=rateScales(s, ACTIVE_NAT, TF===null && CURRENT.isNational); vy=s.performance[i];
+    sc=rateScales(s, ACTIVE_NAT, SHOW_MILESTONES && TF===null && CURRENT.isNational); vy=s.performance[i];
     html=`${tipMonth(s.months[i])} &middot; <span class="pct">${fmtPct(s.performance[i])}</span><br>`+
-      `${commas(s.within_target[i])} of ${commas(s.total[i])} within 18 weeks`;
+      `${commas(s.within_target[i])} of ${commas(s.total[i])} within 18 weeks`+
+      (s.est&&s.est[i]!=null&&Math.abs(s.est[i]-s.performance[i])>=0.0005?`<br>${fmtPct(s.est[i])} incl. estimates for missing trusts`:``);
   } else {
     if(i<0||i>=s.value.length) return;
     sc=countScales(s); vy=+s.value[i];
-    html=`${tipMonth(s.months[i])} &middot; <span class="pct">${commas(s.value[i])}</span><br>${s.label}`;
+    html=`${tipMonth(s.months[i])} &middot; <span class="pct">${commas(s.value[i])}</span><br>${s.label}`+
+      (s.est&&s.est[i]!=null&&s.est[i]!==+s.value[i]?`<br>${commas(s.est[i])} incl. estimates for missing trusts`:``);
   }
   tip.innerHTML=html;
   tip.style.left=(sc.x(i)/BG.W*100)+"%";

@@ -6,6 +6,43 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
+## 2026-11-20 — RTT: NHS England's estimates for missing trusts added; missing-data notes on trusts and ICBs — BUILT on branch `rtt-estimates`, NOT deployed (Claude session; user decisions)
+
+**Why:** the user saw 7.07M on the dashboard against 7.38M on NHS England's RTT dashboard (Sep 2026). Not an error: our
+figure equals NHS's REPORTED total exactly (SPN Table 1, 7,074,324); NHS's headline adds estimates for providers that did
+not submit (six trusts in Sep 2026: RHQ, RA9, RK9, RNS, RX1, RW5; their last submissions sum to the 301,542 gap). The real
+problem was the trend: providers dropping out made the England list look 3% lower than a year earlier when, on NHS's
+like-for-like basis, it was down 0.2%.
+**Source:** NHS England's "RTT Overview Timeseries Including Estimates for Missing Trusts" workbook (England only; every
+headline measure with and without estimates; Apr 2007 to the latest month). Checked against ours on 2026-11-20: our England
+waiting list, % within 18 weeks and 52/65/78/104-week counts equal NHS's reported columns in all 54 months, Apr 2022 to Sep 2026.
+**Decisions (user, one at a time):** (1) show NHS's estimated England figures as a solid grey line beside ours on all three
+England charts (all treatment functions only; NHS publishes no estimates below England); (2) the England summary cards use
+NHS's estimated figures, including the year-on-year change, with "incl. estimates for missing trusts" under each; (3) notes
+on providers that did not submit and on ICBs those providers feed, plus a footer line.
+**Pipeline (`pipeline_rtt`):** `run.py` finds and downloads the latest overview workbook from the FY pages
+(`discover.discover_overview`, file kept at `data_rtt/raw/overview_estimates.xlsx`, gitignored) and FAILS the run if it is
+missing. `estimates.py` parses it and is a third fail-loud gate: our England figures must equal NHS's reported columns for every
+month, and the file must cover our latest month; then the estimated figures are written into `national.json` as `estimates`.
+`build.missing_submissions` finds providers with a gap in their series, then keeps only gaps NHS England itself filled:
+candidates are taken largest first and kept only if NHS's unexplained estimate gap covers the provider's last submission in
+every month of the gap. This drops providers that stopped for other reasons (mergers ODS hasn't recorded, community services
+leaving RTT in Feb 2024, mental-health trusts and small clinics that stopped reporting). Result on real data: 12 providers,
+summing EXACTLY to NHS's gap in every month except Apr 2022 (a provider already missing in the first month, which a gap rule
+cannot see). Providers get `not_submitted` runs; ICBs get `excludes` (provider's last contribution to that ICB >= 1,000 and
+>= 1% of the ICB's list), which needs per-ICB contributions from the raw NHS files.
+**Data in this change:** `estimates` was added to the committed `national.json` from the Sep-26 workbook the user supplied,
+and `not_submitted` to 12 committed provider files using the same function. ICB `excludes` cannot be computed from committed
+data, so ICB notes first appear after the next real refresh on the local machine.
+**Front end (`site/rtt/index.html`):** grey line, legend entry, tooltip line and data-table column on England charts; cards as
+above (small changes now shown to one decimal, e.g. "▼ 0.2%" rather than "▼ 0%"); notes in the existing org-note box; footer
+sentence. Also fixed: the % chart tooltip used the milestone-stretched axis even when milestones were switched off.
+**Known limits:** RTT chart downloads have no legend (unchanged), so the grey line appears unlabelled in exports. Sheffield
+(RHQ) is still hidden from the provider picker by the inactivity rule, so its note is only reachable by link (`?org=RHQ`).
+**Verified locally:** 101 tests pass (8 new in `tests_rtt/test_estimates.py`); headless render of England (all measures), RX1,
+R0A, an ICB with a sample exclusion, 0px overflow at 320px, no console errors. Link discovery is tested against NHS's
+filename pattern only; it has not yet run against the live NHS page.
+
 ## 2026-11-16 — RTT chart: "Show recovery milestones" tick box — DEPLOYED + LIVE-VERIFIED 2026-11-16 (Claude session; user request)
 
 A tick box beside the treatment-function selector shows or hides the 65% / 70% recovery-milestone lines on the "% within 18

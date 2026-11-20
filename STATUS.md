@@ -20,6 +20,8 @@ Two public dashboards on NHS England open data, hosted by the Surgical Data and 
   with cancer-group and referral-route breakdowns. FDS target is stepped: 75% to March 2026, 80% from April 2026.
 - **RTT** (`/rtt/`): % within 18 weeks, waiting-list size and long waiters, by provider, commissioner and treatment function.
   The England chart has a tick box to show or hide the 65% / 70% recovery milestones.
+  England charts and cards also show NHS England's figures including estimates for providers that did not submit;
+  trusts and ICBs affected by a missing submission carry a note. DECISIONS 2026-11-20.
 - **Design:** aligned with the host site (IBM Plex Sans, navy and magenta, lab header and footer). Charts and cards must
   stay on white panels for the colours to pass WCAG AA; see DECISIONS 2026-11-13.
 - **Navigation:** landing page cards lead to each dashboard; each dashboard has a single "Home" link.
@@ -29,6 +31,8 @@ NHS England's website blocks GitHub Actions' servers, so fetching and publishing
 1. **Fetch (local machine).** `scripts/scheduled_refresh.ps1` runs daily at 18:00 from Windows Task Scheduler on
    Obafunsho's (John's) laptop. It runs the tests and both pipelines with all gates, commits and pushes if the data
    changed, then starts the publish workflow. A failed run opens a GitHub issue titled "Scheduled refresh failed".
+   The RTT run also downloads NHS England's overview workbook (estimates for missing trusts) and stops if it is missing
+   or does not match our figures.
 2. **Publish (GitHub).** `.github/workflows/update-data.yml`, started by hand or by the script, with `skip_fetch` on by
    default: tests, then `python -m pipeline.run --no-fetch` (cancer rebuilt from the committed store), then RTT's committed
    data as-is, then deploy to GitHub Pages. The `schedule:` trigger is commented out on purpose. `built_at` is preserved,

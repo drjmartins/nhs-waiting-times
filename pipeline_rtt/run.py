@@ -52,6 +52,20 @@ def run_real():
     if todo:
         discover.save_manifest(manifest)
 
+    # NHS England's England-level figures WITH estimates for non-submitting trusts.
+    # Required: the build reconciles our reported England figures against NHS's
+    # reported columns in this file and publishes the estimated ones beside them.
+    ov = discover.discover_overview(getattr(discover.scrape_all_links, "last_htmls", []))
+    if not ov:
+        raise RuntimeError("no 'RTT Overview Timeseries Including Estimates for Missing Trusts' "
+                           "link found on the RTT FY pages — refusing to build without it")
+    print(f"  fetching overview (estimates) {ov[0]}: {ov[1]}")
+    os.makedirs(os.path.dirname(config.OVERVIEW_PATH), exist_ok=True)
+    r = requests.get(ov[1], timeout=120, headers={"User-Agent": "rtt-dashboard/1.0"})
+    r.raise_for_status()
+    with open(config.OVERVIEW_PATH, "wb") as f:
+        f.write(r.content)
+
     # Shared ODS org-status classification (current/former + succession links) +
     # NHS-trust code set for the provider-type filter; fail-soft to the last-known
     # committed cache on any ODS outage (never raises).
@@ -60,8 +74,9 @@ def run_real():
         raise RuntimeError("ODS classification returned no NHS-trust codes (live fetch AND committed "
                            "cache both empty) — refusing to build a provider-type split that would "
                            "mis-show every provider under the NHS-Trusts default.")
-    meta = build.run(classification=ods_data["orgs"],          # runs BOTH gates, then writes site/rtt/data
-                     trust_codes=set(ods_data.get("nhs_trust_codes") or []))
+    meta = build.run(classification=ods_data["orgs"],          # runs all gates, then writes site/rtt/data
+                     trust_codes=set(ods_data.get("nhs_trust_codes") or []),
+                     estimates_path=config.OVERVIEW_PATH)
     print(f"Rebuilt RTT site data: {meta['counts']} | "
           f"recon={meta['reconciliation'].get('checked')} "
           f"tf_recon_maxΔ={meta['tf_reconciliation']['max_abs_delta']}")
