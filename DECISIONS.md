@@ -6,7 +6,7 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
-## 2026-11-21: RTT ICB "Missing data" note reworded, sorted and capped (Claude session; user request)
+## 2026-11-21: RTT ICB "Missing data" note reworded, sorted and capped: DEPLOYED 2026-11-21 (PR #7, merge 1e0068a) (Claude session; user request)
 - After the first refresh with ICB estimates, Nottingham and Nottinghamshire (QT1) listed Sheffield Teaching Hospitals and
   Cora Health MSK. This is correct: they treat QT1-commissioned patients (Bassetlaw joined the ICB in July 2022) and the
   ICB figures follow NHS England's commissioner coding. The note read as if they were Notts providers, so it now says
