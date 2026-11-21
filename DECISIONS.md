@@ -6,6 +6,15 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
+## 2026-11-21: Visitor analytics with GoatCounter on all three pages (Claude session; user request)
+- One GoatCounter script tag before `</head>` on the landing, Cancer and RTT pages, site code `sdpl-waitingtimes`
+  (stats: https://sdpl-waitingtimes.goatcounter.com). Nothing else on the pages changes.
+- Why GoatCounter: free for non-commercial use, cookieless and stores no personal data, so no consent banner is needed
+  (Google Analytics would need one). Cloudflare Web Analytics was the alternative. Counting is forward-only: there is
+  no record of visits before the tag went live.
+- The script loads async from gc.zgo.at, so if it is blocked or down the dashboards work as before. Ad blockers will
+  hide some visits, so treat counts as a lower bound.
+
 ## 2026-11-21: RTT ICB "Missing data" note reworded, sorted and capped: DEPLOYED 2026-11-21 (PR #7, merge 1e0068a) (Claude session; user request)
 - After the first refresh with ICB estimates, Nottingham and Nottinghamshire (QT1) listed Sheffield Teaching Hospitals and
   Cora Health MSK. This is correct: they treat QT1-commissioned patients (Bassetlaw joined the ICB in July 2022) and the

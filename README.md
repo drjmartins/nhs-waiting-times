@@ -52,6 +52,14 @@ python -m pipeline.run                         # real cancer run (needs access t
 python -m pipeline_rtt.run                     # real RTT run
 ```
 
+## Visitor analytics
+
+Page views are counted with [GoatCounter](https://www.goatcounter.com) (cookieless, no personal data,
+so no consent banner). One script tag sits just before `</head>` on each of the three pages
+(`site/index.html`, `site/cancer/index.html`, `site/rtt/index.html`); a new page needs the same tag.
+Stats: https://sdpl-waitingtimes.goatcounter.com (log in with the lab account). Counting started when
+the tag first went live; there is no earlier data. Local previews on `localhost` are not counted.
+
 ## Data and licence
 
 Source: NHS England Cancer Waiting Times and RTT statistics, used under the Open Government
