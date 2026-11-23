@@ -6,7 +6,19 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
-## 2026-11-21: Visitor analytics with GoatCounter on all three pages (Claude session; user request)
+## 2026-11-23: "CSV data (spreadsheet)" download on both dashboards; RTT empty-range crash fixed (Claude session; user request)
+- The chart's Download menu gains "CSV data (spreadsheet)" beside PNG and SVG. It saves the figures in the current chart
+  (organisation, measure or standard, treatment function or cancer group / route / modality, time range), built from the
+  same clipped series as the hidden data table, so it always matches the screen. Chosen over a whole-dataset download.
+- Columns: Organisation, Code, Chart, Selection, Month (YYYY-MM), then raw values (% to 2 dp, counts without separators),
+  data status (Final / Provisional / low reliability / No data submitted), England comparison and, on RTT, NHS England's
+  estimate including missing trusts where it applies. A source line closes the file; UTF-8 with BOM so Excel opens it.
+  File name follows the image export (e.g. `England-Waiting-list-size.csv`).
+- Found while testing: an RTT trust with no submissions in the selected range (e.g. Sheffield RHQ on 12 months) crashed
+  the chart (summary text read a missing month). It now shows "This provider did not submit RTT data in the selected
+  period. Choose All to see earlier months." and the CSV option is greyed out.
+
+## 2026-11-21: Visitor analytics with GoatCounter on all three pages: DEPLOYED 2026-11-21 (PR #8, merge bab7db3) (Claude session; user request)
 - One GoatCounter script tag before `</head>` on the landing, Cancer and RTT pages, site code `sdpl-waitingtimes`
   (stats: https://sdpl-waitingtimes.goatcounter.com). Nothing else on the pages changes.
 - Why GoatCounter: free for non-commercial use, cookieless and stores no personal data, so no consent banner is needed
