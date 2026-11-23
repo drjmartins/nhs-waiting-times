@@ -6,7 +6,7 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
-## 2026-11-23: "What's new" panel on the landing page, below the dashboard cards (Claude session; user request)
+## 2026-11-23: "What's new" panel on the landing page, below the dashboard cards: DEPLOYED 2026-11-23 (PR #10, merge d92681d) (Claude session; user request)
 - Pale magenta panel with the host's magenta accent (#c2185b on #fcf1f5, AA), distinct from the navy dashboard cards and
   the amber staleness note; lists user-visible changes newest first.
 - Entries live in the `WHATS_NEW` list in `site/index.html` (date + one line). Only entries from the last 90 days show
@@ -14,7 +14,7 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 - Add an entry whenever a change is visible to users. First entries: CSV download (23 Nov) and RTT estimates and
   missing-data notes (20 Nov). User moved it from above to below the cards.
 
-## 2026-11-23: "CSV data (spreadsheet)" download on both dashboards; RTT empty-range crash fixed (Claude session; user request)
+## 2026-11-23: "CSV data (spreadsheet)" download on both dashboards; RTT empty-range crash fixed: DEPLOYED 2026-11-23 (PR #10, merge d92681d) (Claude session; user request)
 - The chart's Download menu gains "CSV data (spreadsheet)" beside PNG and SVG. It saves the figures in the current chart
   (organisation, measure or standard, treatment function or cancer group / route / modality, time range), built from the
   same clipped series as the hidden data table, so it always matches the screen. Chosen over a whole-dataset download.
