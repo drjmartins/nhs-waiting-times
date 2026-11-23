@@ -186,7 +186,8 @@
     border-radius:0;background:#fff;cursor:pointer;color:var(--ink-soft);white-space:nowrap}
   .toolbtn:hover{border-color:#a9a9a3;color:var(--ink)}
   .dlmenu{left:auto;right:0;min-width:160px}
-  .dlmenu .fopt{font-size:13.5px}
+  .dlmenu .fopt{font-size:13.5px;white-space:nowrap}
+  .dlmenu .fopt:disabled{color:var(--ink-soft);opacity:.6;cursor:default}
 
   /* Expand modal: a fullscreen overlay the .bigpanel is MOVED into (and back out of
      on close), so every existing control — route/modality dropdowns, legend,
@@ -300,10 +301,11 @@
         <button type="button" id="expandbtn" class="toolbtn" title="Open the chart full-screen">&#10530; Expand</button>
         <span class="fdrop" style="display:inline-block">
           <button type="button" id="dlbtn" class="toolbtn" aria-haspopup="true" aria-expanded="false"
-            title="Download the chart as an image">&#10515; Download &#9662;</button>
+            title="Download the chart as an image, or its figures as a spreadsheet">&#10515; Download &#9662;</button>
           <div id="dlpanel" class="filterpanel dlmenu" hidden>
             <button type="button" class="fopt" id="dlpng">PNG image</button>
             <button type="button" class="fopt" id="dlsvg">SVG vector</button>
+            <button type="button" class="fopt" id="dlcsv">CSV data (spreadsheet)</button>
           </div>
         </span>
       </span>
@@ -486,6 +488,7 @@ async function init(){
   document.getElementById("dlbtn").addEventListener("click", toggleDlPanel);
   document.getElementById("dlpng").addEventListener("click", ()=>{ closeDlPanel(); downloadChart("png"); });
   document.getElementById("dlsvg").addEventListener("click", ()=>{ closeDlPanel(); downloadChart("svg"); });
+  document.getElementById("dlcsv").addEventListener("click", ()=>{ closeDlPanel(); downloadCSV(); });
   document.querySelectorAll(".rangebtn").forEach(b=>b.addEventListener("click", ()=>setRange(b.dataset.range)));
   document.getElementById("engchk").addEventListener("change", e=>setShowEngland(e.target.checked));
 
@@ -1107,6 +1110,7 @@ function renderModOptions(q){
 
 /* ---- big chart ---- */
 function renderBig(){
+  CSV_DATA=null;       // rebuilt by bigTableHTML; stays null when the chart is empty
   syncBreakdownUI();   // keep the route/modality controls + hint in lockstep with state
   syncRangeUI();       // keep the time-range presets in lockstep with RANGE
   syncEnglandUI();     // keep the England toggle in lockstep (hidden on the England tab)
@@ -1342,6 +1346,10 @@ function bigTableHTML(s, nat){
       `<td>${(+s.within_target[i]).toLocaleString()} of ${(+s.total[i]).toLocaleString()}</td><td>${stat}</td>`+
       (nat?`<td>${nv}</td>`:``)+`</tr>`;
   }
+  CSV_DATA={header:["Month","% within standard","Within standard","Total","Data status",...(nat?["England %"]:[])],
+    rows:s.months.map((mo,i)=>[mo, pct2(s.performance[i]), +s.within_target[i], +s.total[i],
+      s.data_status[i]!=="final"?"Provisional":((+s.total[i])<THRESH?`Final, low reliability (under ${THRESH})`:"Final"),
+      ...(nat?[pct2(natBy[mo])]:[])])};
   return `<div class="vh"><table><caption>Data table: ${xmlEsc(title)}, ${xmlEsc(who)} — the figures plotted in the chart above.</caption>`+
     `<thead>${head}</thead><tbody>${rows}</tbody></table></div>`;
 }
@@ -1435,7 +1443,8 @@ function closeDlPanel(){ const p=document.getElementById("dlpanel"); if(p)p.hidd
   const b=document.getElementById("dlbtn"); if(b)b.setAttribute("aria-expanded","false"); }
 function toggleDlPanel(){ const p=document.getElementById("dlpanel");
   if(p && !p.hidden){ closeDlPanel(); return; }
-  if(p){ p.hidden=false; document.getElementById("dlbtn").setAttribute("aria-expanded","true"); } }
+  if(p){ document.getElementById("dlcsv").disabled=!CSV_DATA;
+    p.hidden=false; document.getElementById("dlbtn").setAttribute("aria-expanded","true"); } }
 
 // Resolve var(--x) → literal value from :root (canvas rasterisation ignores CSS vars).
 function resolvePalette(str){
@@ -1514,6 +1523,24 @@ function exportName(ext){
   const slug=parts.join("-").replace(/[^A-Za-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
   return slug+"."+ext;
 }
+/* ---------- CSV download of the figures in the current chart ----------
+   Each data-table builder also records CSV_DATA from the SAME clipped series, so the
+   download always matches what is on screen (organisation, filters, time range).
+   Numbers are raw (no thousands separators, % to 2 dp) so they work in a spreadsheet. */
+let CSV_DATA=null;
+const pct2 = p => p==null ? "" : +(p*100).toFixed(2);
+function csvCell(v){ if(v==null) return ""; const t=String(v); return /[",\r\n]/.test(t) ? '"'+t.replace(/"/g,'""')+'"' : t; }
+function downloadCSV(){
+  if(!CSV_DATA) return;
+  const ctx=[CURRENT.isNational?"England":humanName(CURRENT.name), CURRENT.isNational?"":CURRENT.code,
+             document.getElementById("bigttl").textContent, csvFilter()];
+  const head=["Organisation","Code","Chart","Selection",...CSV_DATA.header];
+  const lines=[head, ...CSV_DATA.rows.map(r=>[...ctx,...r])].map(r=>r.map(csvCell).join(","));
+  lines.push("", csvCell(`Source: NHS England, via ${location.origin}${location.pathname}. Downloaded ${new Date().toISOString().slice(0,10)}.`));
+  // BOM so Excel opens accented names correctly.
+  saveBlob(new Blob(["\ufeff"+lines.join("\r\n")+"\r\n"],{type:"text/csv;charset=utf-8"}), exportName("csv"));
+}
+function csvFilter(){ return [GROUP||"All cancers", ROUTE, MOD].filter(Boolean).join(", "); }
 function saveBlob(blob, name){
   const url=URL.createObjectURL(blob), a=document.createElement("a");
   a.href=url; a.download=name; document.body.appendChild(a); a.click();

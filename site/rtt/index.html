@@ -151,7 +151,8 @@
     border-radius:0;background:#fff;cursor:pointer;color:var(--ink-soft);white-space:nowrap}
   .toolbtn:hover{border-color:#a9a9a3;color:var(--ink)}
   .dlmenu{left:auto;right:0;min-width:160px}
-  .dlmenu .fopt{font-size:13.5px}
+  .dlmenu .fopt{font-size:13.5px;white-space:nowrap}
+  .dlmenu .fopt:disabled{color:var(--ink-soft);opacity:.6;cursor:default}
 
   .modal{position:fixed;inset:0;z-index:50;display:flex}
   .modal[hidden]{display:none}
@@ -244,10 +245,11 @@
         <button type="button" id="expandbtn" class="toolbtn" title="Open the chart full-screen">&#10530; Expand</button>
         <span class="fdrop" style="display:inline-block">
           <button type="button" id="dlbtn" class="toolbtn" aria-haspopup="true" aria-expanded="false"
-            title="Download the chart as an image">&#10515; Download &#9662;</button>
+            title="Download the chart as an image, or its figures as a spreadsheet">&#10515; Download &#9662;</button>
           <div id="dlpanel" class="filterpanel dlmenu" hidden>
             <button type="button" class="fopt" id="dlpng">PNG image</button>
             <button type="button" class="fopt" id="dlsvg">SVG vector</button>
+            <button type="button" class="fopt" id="dlcsv">CSV data (spreadsheet)</button>
           </div>
         </span>
       </span>
@@ -411,6 +413,7 @@ async function init(){
   document.getElementById("dlbtn").addEventListener("click", toggleDlPanel);
   document.getElementById("dlpng").addEventListener("click", ()=>{ closeDlPanel(); downloadChart("png"); });
   document.getElementById("dlsvg").addEventListener("click", ()=>{ closeDlPanel(); downloadChart("svg"); });
+  document.getElementById("dlcsv").addEventListener("click", ()=>{ closeDlPanel(); downloadCSV(); });
   document.querySelectorAll("#rangebtns .segbtn").forEach(b=>b.addEventListener("click", ()=>setRange(b.dataset.range)));
   document.querySelectorAll("#threshbtns .segbtn").forEach(b=>b.addEventListener("click", ()=>setThresh(+b.dataset.th)));
   document.getElementById("engchk").addEventListener("change", e=>setShowEngland(e.target.checked));
@@ -950,6 +953,7 @@ function renderBig(){
   syncControls();
   const m=measureMeta(MEASURE);
   document.getElementById("bigtag").textContent = CURRENT.isNational ? "England" : CURRENT.name;
+  CSV_DATA=null;
   if(m.kind==="rate") renderRate(); else renderCount();
   renderEstNote();
 }
@@ -994,12 +998,16 @@ function xAxisSVG(xs, x){
 }
 
 const titleSuffix = () => isSliced() ? " — "+tfName(TF) : "";
-function emptyChart(title){
+function emptyChart(title, msg){
+  msg=msg||"No data published for this treatment function at this organisation.";
   document.getElementById("bigttl").textContent = title;
   document.getElementById("legend").innerHTML="";
-  document.getElementById("chartbox").innerHTML=`<div class="emptyslice" role="status">No data published for this treatment function at this organisation.</div>`;
-  announce("No data published for this treatment function at this organisation.");
+  document.getElementById("chartbox").innerHTML=`<div class="emptyslice" role="status">${msg}</div>`;
+  announce(msg);
 }
+// A provider that stopped submitting can have no figures at all in a short time range
+// (e.g. 12 months). Show a message instead of an empty chart (which also crashed the summary).
+const NO_DATA_IN_RANGE="This provider did not submit RTT data in the selected period. Choose All to see earlier months.";
 /* ----- % within 18 weeks (rate chart): 92% target + 65/70% recovery milestones ----- */
 function renderRate(){
   const src=activeSource();
@@ -1008,6 +1016,7 @@ function renderRate(){
   document.getElementById("bigttl").textContent = "% within 18 weeks"+titleSuffix();
   const minMonth=firstVisibleMonth(full.months);
   const s=clipObj(full, minMonth);
+  if(lastIdx(s.performance)<0){ ACTIVE_NAT=null; emptyChart(document.getElementById("bigttl").textContent, NO_DATA_IN_RANGE); return; }
   // NHS's estimates barely move England's % (about 0.1 points), so no second line is drawn on this
   // chart (user decision 2026-11-20); they still appear in the hover box and the data table.
   s.estTip=estFor("pct18", s.months);
@@ -1115,6 +1124,7 @@ function renderCount(){
   document.getElementById("bigttl").textContent = baseTitle+titleSuffix();
   const minMonth=firstVisibleMonth(full.months);
   const s=clipObj(full, minMonth);
+  if(lastIdx(s.value)<0){ ACTIVE_NAT=null; emptyChart(document.getElementById("bigttl").textContent, NO_DATA_IN_RANGE); return; }
   // Grey estimate line on the waiting-list chart only; long waiters keep it for the hover box and table.
   s.estTip=estFor(MEASURE==="waitlist"?"waitlist":"w"+LWTHRESH, s.months);
   if(MEASURE==="waitlist") s.est=s.estTip;
@@ -1204,6 +1214,11 @@ function rateTableHTML(s,nat){
     rows+=`<tr><td>${tipMonth(s.months[i])}</td><td>${fmtPct(s.performance[i])}</td>`+
       `<td>${commas(s.within_target[i])} of ${commas(s.total[i])}</td><td>${stat}</td>`+(nat?`<td>${nv}</td>`:``)+(s.estTip?`<td>${s.estTip[i]!=null?fmtPct(s.estTip[i]):"—"}</td>`:``)+`</tr>`;
   }
+  CSV_DATA={header:["Month","% within 18 weeks","Within 18 weeks","Total","Data status",...(nat?["England % (reported data)"]:[]),...(s.estTip?["% incl. estimates for missing trusts"]:[])],
+    rows:s.months.map((mo,i)=>{ const miss=s.performance[i]==null;
+      return [mo, pct2(s.performance[i]), miss?"":+s.within_target[i], miss?"":+s.total[i],
+        miss?"No data submitted":((+s.total[i])<THRESH?`Final, low reliability (under ${THRESH})`:"Final"),
+        ...(nat?[pct2(natBy[mo])]:[]), ...(s.estTip?[pct2(s.estTip[i])]:[])]; })};
   return `<div class="vh"><table><caption>Data table: ${xmlEsc(title)}, ${xmlEsc(who)} — the figures plotted above.</caption>`+
     `<thead>${head}</thead><tbody>${rows}</tbody></table></div>`;
 }
@@ -1211,6 +1226,8 @@ function countTableHTML(s){
   const title=document.getElementById("bigttl").textContent, who=CURRENT.isNational?"England":CURRENT.name;
   let rows="";
   for(let i=0;i<s.value.length;i++) rows+=`<tr><td>${tipMonth(s.months[i])}</td><td>${s.value[i]==null?"No data submitted":commas(s.value[i])}</td>`+(s.estTip?`<td>${s.estTip[i]!=null?commas(s.estTip[i]):"—"}</td>`:``)+`</tr>`;
+  CSV_DATA={header:["Month",MEASURE==="longwait"?`Pathways waiting over ${LWTHRESH} weeks`:"Pathways on the waiting list",...(s.estTip?["Incl. estimates for missing trusts"]:[])],
+    rows:s.months.map((mo,i)=>[mo, s.value[i]==null?"No data submitted":+s.value[i], ...(s.estTip?[s.estTip[i]==null?"":+s.estTip[i]]:[])])};
   return `<div class="vh"><table><caption>Data table: ${xmlEsc(title)}, ${xmlEsc(who)} — ${xmlEsc(s.label)}, the figures plotted above.</caption>`+
     `<thead><tr><th scope="col">Month</th><th scope="col">${xmlEsc(s.unit)}</th>`+(s.estTip?`<th scope="col">Incl. estimates for missing trusts</th>`:``)+`</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
@@ -1311,7 +1328,8 @@ function closeDlPanel(){ const p=document.getElementById("dlpanel"); if(p)p.hidd
   const b=document.getElementById("dlbtn"); if(b)b.setAttribute("aria-expanded","false"); }
 function toggleDlPanel(){ const p=document.getElementById("dlpanel");
   if(p && !p.hidden){ closeDlPanel(); return; }
-  if(p){ p.hidden=false; document.getElementById("dlbtn").setAttribute("aria-expanded","true"); } }
+  if(p){ document.getElementById("dlcsv").disabled=!CSV_DATA;
+    p.hidden=false; document.getElementById("dlbtn").setAttribute("aria-expanded","true"); } }
 function resolvePalette(str){
   const cs=getComputedStyle(document.documentElement);
   return str.replace(/var\((--[a-z-]+)\)/g, (m,k)=>{ const v=cs.getPropertyValue(k).trim(); return v||m; });
@@ -1349,6 +1367,24 @@ function buildExportSVG(){
     `<g transform="translate(0,${headerH})">${chartSvg.innerHTML}</g></svg>`;
   return resolvePalette(svg);
 }
+/* ---------- CSV download of the figures in the current chart ----------
+   Each data-table builder also records CSV_DATA from the SAME clipped series, so the
+   download always matches what is on screen (organisation, filters, time range).
+   Numbers are raw (no thousands separators, % to 2 dp) so they work in a spreadsheet. */
+let CSV_DATA=null;
+const pct2 = p => p==null ? "" : +(p*100).toFixed(2);
+function csvCell(v){ if(v==null) return ""; const t=String(v); return /[",\r\n]/.test(t) ? '"'+t.replace(/"/g,'""')+'"' : t; }
+function downloadCSV(){
+  if(!CSV_DATA) return;
+  const ctx=[CURRENT.isNational?"England":humanName(CURRENT.name), CURRENT.isNational?"":CURRENT.code,
+             document.getElementById("bigttl").textContent, csvFilter()];
+  const head=["Organisation","Code","Chart","Selection",...CSV_DATA.header];
+  const lines=[head, ...CSV_DATA.rows.map(r=>[...ctx,...r])].map(r=>r.map(csvCell).join(","));
+  lines.push("", csvCell(`Source: NHS England, via ${location.origin}${location.pathname}. Downloaded ${new Date().toISOString().slice(0,10)}.`));
+  // BOM so Excel opens accented names correctly.
+  saveBlob(new Blob(["\ufeff"+lines.join("\r\n")+"\r\n"],{type:"text/csv;charset=utf-8"}), exportName("csv"));
+}
+function csvFilter(){ return TF ? tfName(TF) : "All treatment functions"; }
 function saveBlob(blob, name){
   const url=URL.createObjectURL(blob), a=document.createElement("a");
   a.href=url; a.download=name; document.body.appendChild(a); a.click();

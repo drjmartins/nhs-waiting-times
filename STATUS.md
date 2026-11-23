@@ -26,6 +26,8 @@ Two public dashboards on NHS England open data, hosted by the Surgical Data and 
   marks once the next scheduled refresh has run. DECISIONS 2026-11-20.
 - **Design:** aligned with the host site (IBM Plex Sans, navy and magenta, lab header and footer). Charts and cards must
   stay on white panels for the colours to pass WCAG AA; see DECISIONS 2026-11-13.
+- **Downloads:** each chart downloads as PNG or SVG, and its figures as a CSV spreadsheet (DECISIONS 2026-11-23).
+- **What's new:** panel on the landing page; add a line to `WHATS_NEW` in `site/index.html` for any user-visible change.
 - **Navigation:** landing page cards lead to each dashboard; each dashboard has a single "Home" link.
 - **Visitor analytics:** GoatCounter (cookieless) on all three pages; stats at https://sdpl-waitingtimes.goatcounter.com.
   DECISIONS 2026-11-21.
