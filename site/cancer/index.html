@@ -5,86 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NHS Cancer Waiting Times Dashboard</title>
 <link rel="stylesheet" href="../assets/sdpl.css?v=1">
+<link rel="stylesheet" href="../assets/dashboard.css?v=1">
 <style>
-  :root{
-    /* Clinical chart-paper palette: host-site ink, a single magenta for
-       the target line, restrained navy for the org series. */
-    --ink:#141414; --ink-soft:#4a4a4a; --line:#d6d6d1; --paper:#f5f5f2;
-    --panel:#ffffff; --org:#0b1d3a; --org-muted:#6f84ad; --nat:#868686; --target:#c2185b;
-    --good:#2f7d4f; --grid:#eef3f4;
-    /* Text-label tone for the target; was decoupled from a (then deliberately faint) amber
-       --target LINE so the label clears 4.5:1 while the line stays faint. */
-    --target-text:#c2185b;
-    /* Chart palette re-aligned to the host site 2026-11-13 (user-approved "option B", see DECISIONS):
-       navy series, lighter navy for provisional/low-reliability, neutral grey England, magenta
-       target line + labels. On the white panel: --org 16.79:1, --org-muted 3.76:1, --nat 3.64:1,
-       --target/--target-text 5.87:1. --note keeps the amber for the banner borders. */
-    --note:#c8881d;
-    /* Host-site UI accents (surgicaldatapolicy.org): navy for links/buttons/active states,
-       magenta for the heading accent only. Kept SEPARATE from --org, which is now the
-       chart series colour only, so restyling the UI can never touch the AA-tuned charts.
-       --paper (#f5f5f2) is the page tint: charts and cards must stay on --panel (#fff). */
-    --accent:#0b1d3a; --accent-2:#c2185b;
-  }
-  *{box-sizing:border-box}
-  /* Visually-hidden (screen-reader-only): the data-table alternative to each chart
-     and the polite live region. Not display:none — must stay in the a11y tree. */
-  .vh{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;
-    overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
-  /* Keyboard focus ring for the otherwise-transparent SVG data points (made
-     focusable for keyboard tooltip access). */
-  .pt.hit:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
-  body{margin:0;background:var(--paper);color:var(--ink);
-    font-family:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;
-    line-height:1.5}
-  .wrap{max-width:1040px;margin:0 auto;padding:32px 24px 80px}
-  header{border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:8px}
-  h1{font-size:30px;margin:0 0 2px;letter-spacing:-.01em}
-  .sub{font-family:inherit;font-size:12px;
-    text-transform:uppercase;letter-spacing:.14em;color:var(--ink-soft)}
-  .controls{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;
-    margin:22px 0 10px}
-  label{display:block;font-family:inherit;font-size:11px;
-    text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft);margin-bottom:5px}
-  select,input[type=search]{font:inherit;font-size:15px;padding:8px 10px;
-    border:1px solid var(--line);border-radius:0;background:#fff;min-width:min(360px,100%);max-width:100%}
-  .orgname{font-size:13px;color:var(--ink-soft);display:inline-block;margin:0 0 0 12px;vertical-align:middle}
-  /* Empty byline (England, or a region-less provider) generates no inline box, so
-     the .orgrow collapses to zero height instead of leaving a blank line. */
-  .orgname:empty{display:none}
-  .orgname b{color:var(--ink)}
-  /* Single "Home" link back to the landing page (replaced the Cancer · RTT · All dashboards
-     strip, 2026-11-14). */
-  .dashnav{font-family:inherit;font-size:12px;margin-top:8px}
-  .dashnav a{color:var(--accent);text-decoration:underline}
-  /* Org type buttons (National / Providers / Commissioners) */
-  .typebtns{display:inline-flex;border:1px solid var(--line);border-radius:0;overflow:hidden;margin-bottom:8px}
-  .typebtn{font:inherit;font-size:13.5px;padding:7px 15px;border:0;border-right:1px solid var(--line);
-    background:#fff;cursor:pointer;color:var(--ink-soft)}
-  .typebtn:last-child{border-right:0}
-  .typebtn:hover{background:var(--grid)}
-  .typebtn.active{background:var(--accent);color:#fff}
-  /* Provider-type sub-filter (Providers view only) — between the type buttons and the dropdown. */
-  .ptyperow{margin:0 0 6px}
-  .ptyperow[hidden]{display:none}
-  .ptyperow label{margin-bottom:4px}
-  .orgbtnwrap{display:inline-block;vertical-align:middle}
-  .orgbtnwrap .filterbtn{min-width:min(380px,100%);max-width:100%}
-  .filterbtn[disabled],.orgbtnwrap[hidden]{display:none}
-  /* In-panel search box for the searchable dropdowns (scoped to beat the global
-     input[type=search] min-width so it fits the panel). */
-  .filterpanel .dropsearch{display:block;width:100%;min-width:0;font:inherit;font-size:14px;padding:7px 9px;
-    margin-bottom:6px;border:1px solid var(--line);border-radius:0}
-  .note{background:#fff7e8;border:1px solid #f0dcae;border-left:3px solid var(--note);
-    padding:10px 13px;font-size:13.5px;color:#6b561f;border-radius:0;margin:14px 0 22px}
-  /* Contextual org-lifecycle note (former/newly-formed) — neutral, distinct from the amber break note. */
-  .orgnote{background:var(--grid);border:1px solid var(--line);border-left:3px solid var(--accent);
-    padding:9px 12px;font-size:13px;color:var(--ink-soft);border-radius:0;margin:2px 0 16px}
-  .orgnote[hidden]{display:none}
-  .orgnote b{color:var(--ink)}
-  .orgnote .rellink{background:none;border:0;padding:0;font:inherit;color:var(--accent);
-    text-decoration:underline;cursor:pointer}
-  .orgnote .rellink:hover{color:var(--accent)}
+  /* Cancer-only styles; shared ones are in assets/dashboard.css. */
+  .orgnote{margin:2px 0 16px}
+  .cards{margin:0 0 22px}
 
   /* Shared cancer-group selector (drives all three cards + the big chart) */
   .groupbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 16px}
@@ -94,134 +19,25 @@
   .groupbar .filterbtn.grouped{border-color:var(--accent);color:var(--accent);font-weight:600;
     box-shadow:0 1px 6px rgba(11,29,58,.10)}
 
-  /* Three summary cards = the standard switcher */
-  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:0 0 22px}
-  @media(max-width:780px){.cards{grid-template-columns:1fr}}
-  .scard{background:var(--panel);border:1px solid var(--line);border-radius:0;
-    padding:13px 15px 11px;cursor:pointer;position:relative;
-    transition:border-color .12s,box-shadow .12s;border-top:3px solid var(--line)}
-  .scard:hover{border-color:#a9a9a3}
-  .scard.active{border-top-color:var(--accent);box-shadow:0 1px 0 var(--accent) inset, 0 2px 10px rgba(11,29,58,.10)}
-  .scard h3{margin:0;font-size:14.5px;letter-spacing:-.005em}
-  .scard .stdcode{font-family:inherit;font-size:10.5px;
-    text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft)}
-  .scard .figure{display:flex;align-items:baseline;gap:8px;margin:6px 0 2px}
-  .scard .figure b{font-size:27px;font-weight:600;letter-spacing:-.02em;line-height:1;
-    color:var(--ink);font-family:inherit}
-  .scard .figure .vs{font-size:11px;color:var(--ink-soft);font-family:inherit}
-  .scard .figure .vs.meets{color:var(--good)} .scard .figure .vs.under{color:var(--target-text)}
-  .scard .spark{margin-top:6px}
-  .scard .mon{font-family:inherit;font-size:10.5px;color:var(--ink-soft);margin-top:3px}
   .scard .mon .lowtag{color:#8a6d1f}                 /* n<10 caveat, matches low-reliability hue */
-  .scard.nodata{opacity:.72}
-  .scard .figure b.muted{color:var(--ink)}     /* low-reliability latest figure kept dark-ink for contrast; the n<10 caveat + muted sparkline carry the de-emphasis */
+  /* Low-reliability latest figure kept dark-ink for contrast; the n<10 caveat + muted sparkline carry the signal. */
+  .scard .figure b.muted{color:var(--ink)}
   .scard .nogroup{font-size:13px;color:var(--ink-soft);margin:10px 0 8px}
 
-  /* Big chart panel */
-  .bigpanel{background:var(--panel);border:1px solid var(--line);border-radius:0;
-    padding:16px 18px 12px;position:relative}
-  .bigpanel .ttl{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 6px}
-  .bigpanel .ttl h2{margin:0;font-size:18px;letter-spacing:-.01em}
-  .bigpanel .ttl .tag{font-family:inherit;font-size:11px;color:var(--ink-soft)}
-  /* Legend: single line — org series + its uncertain states, then the reference lines,
-     all separated by dots (the "|" group boundary was dropped 2026-11-20). Wraps gracefully on narrow widths; one line at normal width. */
-  .legend{display:flex;flex-wrap:wrap;align-items:center;gap:7px;
-    font-family:ui-monospace,Menlo,monospace;font-size:11px;
-    color:var(--ink-soft);margin:2px 0 4px}
-  .legend .lgitem{display:inline-flex;align-items:center;white-space:nowrap}
-  .legend .lgsep{opacity:.4}
-  .chartbox{position:relative}
-  .chartbox svg{display:block;width:100%;height:auto}
-  .pt{cursor:pointer}
-  /* Anchored tooltip */
-  .tip{position:absolute;z-index:5;transform:translate(-50%,-118%);pointer-events:none;
-    background:var(--ink);color:#fff;border-radius:0;padding:7px 10px;
-    font-family:ui-monospace,Menlo,monospace;font-size:11.5px;line-height:1.45;
-    white-space:nowrap;box-shadow:0 3px 12px rgba(17,32,43,.25);display:none}
-  .tip .pct{font-size:14px;font-weight:600}
   .tip .st{text-transform:uppercase;letter-spacing:.06em}
   .tip .prov{color:#f0c870} .tip .fin{color:#9be0b4}
-  .tip::after{content:"";position:absolute;left:50%;top:100%;transform:translateX(-50%);
-    border:5px solid transparent;border-top-color:var(--ink)}
 
-  /* Breakdown filter (custom dropdown so options are in-DOM + reviewable) */
-  .filterbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:2px 0 8px}
-  .filterbar .flabel{font-family:inherit;font-size:11px;
-    text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft)}
-  .fgrp{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
-  .fgrp[hidden]{display:none}
-  .fdrop{position:relative}
-  .filterbtn{font:inherit;font-size:14px;padding:6px 12px;border:1px solid var(--line);
-    border-radius:0;background:#fff;cursor:pointer;color:var(--ink);min-width:200px;text-align:left}
-  .filterbtn:hover{border-color:#a9a9a3}
-  .filterbtn .caret{float:right;color:var(--ink-soft);margin-left:8px}
-  .filterpanel{position:absolute;z-index:8;top:calc(100% + 4px);left:0;
-    min-width:min(280px,calc(100vw - 32px));max-width:min(340px,calc(100vw - 32px));
-    max-height:340px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:0;
-    box-shadow:0 6px 22px rgba(17,32,43,.16);padding:6px}
-  .filterpanel[hidden]{display:none}
-  .fgroup{font-family:inherit;font-size:10px;text-transform:uppercase;
-    letter-spacing:.1em;color:var(--ink-soft);padding:8px 8px 3px;border-top:1px solid var(--grid);margin-top:4px}
-  .fgroup.first{border-top:0;margin-top:0}
-  .fopt{display:block;width:100%;text-align:left;font:inherit;font-size:13.5px;padding:5px 8px;
-    border:0;background:none;border-radius:0;cursor:pointer;color:var(--ink)}
-  .fopt:hover{background:var(--grid)}
-  .fopt.active{background:rgba(11,29,58,.10);color:var(--accent);font-weight:600}
-  .slicehint{font-size:12px;color:var(--ink-soft)}
   .lowrel{font-size:12.5px;color:#6b561f;background:#fff7e8;border:1px solid #f0dcae;
     border-left:3px solid var(--note);border-radius:0;padding:7px 11px;margin:8px 0 2px}
   .lowrel[hidden]{display:none}
-  .emptyslice{padding:40px 10px;text-align:center;color:var(--ink-soft);font-size:14px}
-
-  footer{margin-top:42px;border-top:1px solid var(--line);padding-top:16px;
-    font-size:12.5px;color:var(--ink-soft)}
-  a{color:var(--accent)}
-  svg text{font-family:ui-monospace,Menlo,monospace}
-
-  /* Chart toolbar (Expand + Download) — lives inside .ttl so it travels with the
-     panel when it is moved into the expand modal, and so export always reads the
-     on-screen state regardless of which view is active. */
-  .charttools{margin-left:auto;display:inline-flex;gap:8px;align-items:center}
-  .toolbtn{font:inherit;font-size:12.5px;padding:5px 11px;border:1px solid var(--line);
-    border-radius:0;background:#fff;cursor:pointer;color:var(--ink-soft);white-space:nowrap}
-  .toolbtn:hover{border-color:#a9a9a3;color:var(--ink)}
-  .dlmenu{left:auto;right:0;min-width:160px}
-  .dlmenu .fopt{font-size:13.5px;white-space:nowrap}
-  .dlmenu .fopt:disabled{color:var(--ink-soft);opacity:.6;cursor:default}
-
-  /* Expand modal: a fullscreen overlay the .bigpanel is MOVED into (and back out of
-     on close), so every existing control — route/modality dropdowns, legend,
-     tooltips — keeps working without duplicated IDs or re-wiring. */
-  .modal{position:fixed;inset:0;z-index:50;display:flex}
-  .modal[hidden]{display:none}
-  .modal-backdrop{position:absolute;inset:0;background:rgba(17,32,43,.55)}
-  .modal-inner{position:relative;margin:auto;width:min(1240px,96vw);max-height:95vh;
-    overflow:auto;background:var(--paper);border-radius:0;
-    box-shadow:0 14px 54px rgba(17,32,43,.42);padding:16px}
-  .modal-close{position:absolute;top:12px;right:14px;z-index:2;font-size:17px;line-height:1;
-    border:1px solid var(--line);background:#fff;border-radius:0;padding:6px 10px;
-    cursor:pointer;color:var(--ink-soft)}
-  .modal-close:hover{color:var(--ink);border-color:#a9a9a3}
-  .modal-host .bigpanel{border:0;padding:8px 6px 4px}
 
   /* Time-range presets: a compact segmented control, right-aligned in the filterbar. */
-  .rangewrap{margin-left:auto;display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
   .rangebtns{display:inline-flex;border:1px solid var(--line);border-radius:0;overflow:hidden}
   .rangebtn{font:inherit;font-size:12.5px;padding:5px 11px;border:0;border-right:1px solid var(--line);
     background:#fff;cursor:pointer;color:var(--ink-soft);white-space:nowrap}
   .rangebtn:last-child{border-right:0}
   .rangebtn:hover{background:var(--grid)}
   .rangebtn.active{background:var(--accent);color:#fff}
-
-  /* "Show England" toggle — overrides the global uppercase/block label defaults. */
-  .engtoggle{display:inline-flex;align-items:center;gap:6px;margin:0;cursor:pointer;
-    font:inherit;font-size:13px;text-transform:none;letter-spacing:0;color:var(--ink)}
-  .engtoggle input{margin:0;cursor:pointer;accent-color:var(--accent)}
-  /* Host alignment: the former monospace UI labels are now Plex Sans; tighten the
-     tracking that was tuned for monospace. Chart text (svg, legend, tooltip) stays mono. */
-  .sub,label,.flabel,.fgroup{font-weight:600;letter-spacing:.07em}
-  .dashnav,header nav{font-size:13.5px;font-weight:600}
-  .wrap{padding-top:28px;padding-bottom:56px}
 </style>
 <!-- Visitor counts: GoatCounter (cookieless, no personal data). Stats: https://sdpl-waitingtimes.goatcounter.com -->
 <script data-goatcounter="https://sdpl-waitingtimes.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
@@ -376,21 +192,18 @@
 <div id="live" class="vh" aria-live="polite" aria-atomic="true"></div>
 
 <script src="../assets/freshness.js?v=1"></script>
+<script src="../assets/dashboard.js?v=1"></script>
 <script>
-const DATA = "data/";
-// Cache-bust: every data file (except meta.json itself) is fetched with a build-version
-// token derived from meta.built_at, so a new index.html can never pair with a browser-
-// or CDN-cached index.json from a previous build. meta.json is fetched no-store so the
-// token always reflects the latest deployed build (it's tiny). Set in init().
-let DV="";
-const durl = path => DATA+path+(DV?(path.includes("?")?"&":"?")+"v="+DV:"");
-const NATIONAL_CODE = "__NATIONAL__";
+// Hooks and constants for the shared code in assets/dashboard.js.
+const EXPORT_HEADER_H = 72;             // export image header: title, subtitle and legend
+function closeExtraPanels(){ closePanel(); closeModPanel(); }
+function onOrgSwitch(){ resetSliceForSwitch(); }
+async function ensureSlice(){ await ensureForGroup(); }
 const DEFAULT_STD = "CMB62";            // 62-day combined is the most-watched
 const THRESH = 10;                      // pipeline RELIABILITY_THRESHOLD: denom < this = low-reliability
 let META=null, NATIONAL=null, CURRENT=null, CURRENT_STD=DEFAULT_STD;
 let CURRENT_TYPE="national";                   // national | provider | icb (org type buttons)
 let PTYPE="trust";                             // provider-type filter: trust | independent (default NHS Trusts)
-const ptypeOf = o => o.ptype==="independent" ? "independent" : "trust";  // absent => NHS trust
 // Composite breakdown state (v6). Three independent axes:
 //   GROUP  — null = All cancers, else one of the ten tumour-site groups. The
 //            page-level shared selector; drives the cards + chart and PERSISTS
@@ -402,11 +215,6 @@ const ptypeOf = o => o.ptype==="independent" ? "independent" : "trust";  // abse
 //            x modality three-way isn't published, so modality can't nest under a
 //            group. Selecting a group hides AND resets it (see selectGroup).
 let GROUP=null, ROUTE=null, MOD=null;
-// Big-chart time-range: a FIXED rolling window (last-N months) so the chart stays a
-// constant width as NHS publishes more months. Default All (was 3 years until 2026-11-20); applies to ALL
-// standards (not standard-aware). "all" = the full series. Display-only — the cards'
-// own recent-trend sparklines are unaffected.
-const RANGE_MONTHS={"3y":36,"12m":12,"all":Infinity};
 let RANGE="all";   // default: all months (user decision 2026-11-20; was "3y")
 // Show/hide the grey England comparison overlay (providers + commissioners only).
 // Default ON. On the England tab the org's own line IS England, so the toggle is
@@ -424,15 +232,9 @@ let BREAKDOWN=null;                            // current org's breakdown file (
 let NATIONAL_BREAKDOWN=null;                   // national breakdown (lazy, cached)
 let ACTIVE_NAT=null;                           // national series currently overlaid (for tooltip scaling)
 
-const ABBR=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const fmt = p => (p*100).toFixed(1)+"%";
 // Targets are always whole percentages, so they are shown without a decimal (80%, not 80.0%).
 const fmtTarget = p => Math.round(p*100)+"%";
-const monthLabel = m => {const[y,mm]=m.split("-");return ABBR[+mm-1]+" "+y.slice(2);};
-const tipMonth   = m => {const[y,mm]=m.split("-");return ABBR[+mm-1]+" "+y;};
-const _MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
-const fullMonth = m => {const[y,mm]=m.split("-");return _MN[+mm-1]+" "+y;};
-const isoDate = iso => {const[y,m,d]=iso.slice(0,10).split("-");return (+d)+" "+_MN[+m-1]+" "+y;};
 
 // Banner under the chart for the SELECTED standard when its target changed over time (moved
 // from the footer 2026-11-20, user request); hidden for standards with a single target.
@@ -525,127 +327,6 @@ async function init(){
   }
 }
 
-// Org type: National (no dropdown) / Providers / Commissioners. Switching to a
-// provider/ICB type defaults to the first org alphabetically so the chart is
-// never blank. `code` optionally selects a specific org (deep link).
-async function setType(type, code){
-  CURRENT_TYPE=type;
-  document.querySelectorAll("#typebtns .typebtn").forEach(b=>{ const on=b.dataset.type===type;
-    b.classList.toggle("active", on); b.setAttribute("aria-pressed", on?"true":"false"); });
-  closeOrgPanel();
-  const drop=document.getElementById("orgdrop");
-  if(type==="national"){
-    document.getElementById("ptyperow").hidden=true;
-    drop.hidden=true;
-    document.getElementById("orglabel").textContent="England — all-England";
-    await loadNational();
-    return;
-  }
-  // Provider-type filter shows for Providers only. DEEP-LINK SAFETY: when a specific
-  // org is requested, the filter FOLLOWS that org's type so the link is never hidden;
-  // otherwise default to NHS Trusts.
-  if(type==="provider"){
-    const e=code && window._idx.find(o=>o.code===code);
-    PTYPE = e ? ptypeOf(e) : "trust";
-    document.getElementById("ptyperow").hidden=false;
-    updatePtypeButtons();
-  } else {
-    document.getElementById("ptyperow").hidden=true;
-  }
-  drop.hidden=false;
-  const list=orgListFor(type);
-  // A direct ?org= link may target a HIDDEN org (negligible activity, out of the
-  // picker but still reachable): resolve `code` against the FULL index, falling
-  // back to the first visible org so the chart never blanks.
-  const full=window._idx.filter(o=>o.level===type);
-  const pick=(code && full.find(o=>o.code===code)) || list[0];
-  if(!pick) return;
-  document.getElementById("orglabel").textContent=`${pick.name} (${pick.code})`;
-  buildOrgOptions("");
-  await loadOrg(pick.code);
-}
-// Provider-type sub-filter: re-scope the dropdown to the chosen type, then select
-// its first org so the chart never blanks.
-function setPtype(pt){
-  if(pt===PTYPE || CURRENT_TYPE!=="provider") return;
-  PTYPE=pt; updatePtypeButtons(); closeOrgPanel();
-  const list=orgListFor("provider"); buildOrgOptions("");
-  if(list.length){ document.getElementById("orglabel").textContent=`${list[0].name} (${list[0].code})`; loadOrg(list[0].code); }
-}
-function updatePtypeButtons(){
-  document.querySelectorAll("#ptypebtns .ptypebtn").forEach(b=>{ const on=b.dataset.ptype===PTYPE;
-    b.classList.toggle("active", on); b.setAttribute("aria-pressed", on?"true":"false"); });
-}
-// Picker list: orgs of this type EXCLUDING negligible-activity ones flagged
-// hidden in index.json (computed each build). Hidden orgs stay direct-linkable
-// (see setType). Providers are further scoped by the provider-type filter.
-function orgListFor(type){
-  let list=window._idx.filter(o=>o.level===type && !o.hidden);
-  if(type==="provider") list=list.filter(o=>ptypeOf(o)===PTYPE);   // provider-type filter (ODS role)
-  return list.sort((a,b)=>a.name.localeCompare(b.name));
-}
-// Commissioner sub-grouping off the org NAME: ICB vs Other (national hubs).
-// Providers are scoped by the ODS-role provider-type FILTER, so they need no
-// name-based grouping inside the list (the old name heuristic was the murky part).
-function orgGroupOf(o){
-  if(o.former) return "Former organisations";   // closed/superseded per ODS — own group, still selectable
-  const u=(o.name||"").toUpperCase();
-  if(o.level==="icb") return u.includes("INTEGRATED CARE BOARD") ? "ICB" : "Other";
-  return "Current";
-}
-// Searchable, GROUPED option list. Providers: type filter scopes the list, so just
-// split current vs Former (no redundant type header). Commissioners: ICB/Other/Former.
-function buildOrgOptions(q){
-  const host=document.getElementById("orgoptions"); host.innerHTML="";
-  q=(q||"").trim().toLowerCase();
-  const list=orgListFor(CURRENT_TYPE).filter(o=> !q || o.name.toLowerCase().includes(q) || o.code.toLowerCase().includes(q));
-  if(!list.length){ host.innerHTML='<div class="fgroup first">No matches</div>'; return; }
-  // Former (closed/superseded per ODS) orgs bucketed last but still SELECTABLE —
-  // history stays viewable (valuable right after a merger). Inactivity hides later.
-  const groups = CURRENT_TYPE==="icb"
-    ? [["ICB","ICB"],["Other","Other"],["Former organisations","Former organisations"]]
-    : [["Current",null],["Former organisations","Former organisations"]];
-  let first=true;
-  for(const [key,label] of groups){
-    const items = key==="Current" ? list.filter(o=>!o.former) : list.filter(o=>orgGroupOf(o)===key);
-    if(!items.length) continue;
-    if(label){ const h=document.createElement("div"); h.className="fgroup"+(first?" first":""); h.textContent=label; host.appendChild(h); }
-    first=false;
-    items.forEach(o=>{ const b=document.createElement("button");
-      const on=CURRENT && CURRENT.code===o.code;
-      b.className="fopt"+(on?" active":"");
-      b.setAttribute("role","option"); b.setAttribute("aria-selected", on?"true":"false");
-      b.textContent=`${o.name} (${o.code})`;
-      b.onclick=()=>selectOrg(o); host.appendChild(b); });
-  }
-}
-function selectOrg(o){
-  document.getElementById("orglabel").textContent=`${o.name} (${o.code})`;
-  closeOrgPanel(); loadOrg(o.code);
-}
-function toggleOrgPanel(){ const p=document.getElementById("orgpanel"); if(p && !p.hidden) closeOrgPanel(); else openOrgPanel(); }
-function openOrgPanel(){
-  if(CURRENT_TYPE==="national") return;
-  const p=document.getElementById("orgpanel"), s=document.getElementById("orgsearch");
-  s.value=""; buildOrgOptions("");
-  p.hidden=false; document.getElementById("orgbtn").setAttribute("aria-expanded","true");
-  // Reopen on an already-selected org: scroll it into view (it carries .active),
-  // rather than starting from the top of a long list. Focus without scrolling so
-  // the search box doesn't yank the panel back up.
-  setTimeout(()=>{
-    const act=p.querySelector(".fopt.active");
-    if(act) act.scrollIntoView({block:"nearest"});
-    s.focus({preventScroll:true});
-  },0);
-}
-function closeOrgPanel(){ const p=document.getElementById("orgpanel"); if(p)p.hidden=true;
-  const b=document.getElementById("orgbtn"); if(b)b.setAttribute("aria-expanded","false"); }
-// Shared keyboard handler for in-panel search inputs: Enter picks first match, Esc closes.
-function dropSearchKey(e){
-  if(e.key==="Enter"){ const f=e.target.parentElement.querySelector(".fopt"); if(f){e.preventDefault();f.click();} }
-  else if(e.key==="Escape"){ closeOrgPanel(); closePanel(); closeModPanel(); }
-}
-
 // On an org/standard switch the shared cancer GROUP persists (page-level), but
 // the route/modality narrowing resets: route values differ by standard, and a
 // freshly-loaded org's breakdown may not publish the previously-picked slice.
@@ -653,57 +334,6 @@ function resetSliceForSwitch(){ ROUTE=null; MOD=null; }
 // When a group is active we need the breakdown file loaded before render (the
 // cards + chart read the group's series from it).
 async function ensureForGroup(){ if(isGroupSlice()) await ensureBreakdown(); }
-
-async function loadNational(){
-  // national.json carries only {standards}; wrap it with identifying fields.
-  CURRENT = Object.assign({code:NATIONAL_CODE, name:"England", level:"national",
-    region:"England", isNational:true}, NATIONAL);
-  BREAKDOWN=null; resetSliceForSwitch();
-  renderOrgNote(null);
-  await ensureForGroup();
-  render();
-}
-async function loadOrg(code){
-  CURRENT = await (await fetch(durl("org/"+code+".json"))).json();
-  CURRENT.isNational=false;
-  BREAKDOWN=null; resetSliceForSwitch();   // breakdown is per-org; refetch lazily
-  renderOrgNote(code);
-  await ensureForGroup();
-  render();
-}
-
-// Jump to a related org (a successor / predecessor from the ODS change note).
-function goToOrg(code){
-  const e=(window._idx||[]).find(o=>o.code===code);
-  if(e) setType(e.level, e.code);
-}
-const _monthYear = iso => { if(!iso) return ""; const[y,m]=iso.split("-"); return _MN[+m-1]+" "+y; };
-// Generic, auto-generated lifecycle note (no hand-written per-merger text), built
-// from the index entry's ODS succession fields. Former → "Closed … — see related:";
-// newly-formed → "Formed … — see related:". Hidden when neither applies.
-function renderOrgNote(code){
-  const box=document.getElementById("orgnote");
-  const e=code ? (window._idx||[]).find(o=>o.code===code) : null;
-  if(!e || (!e.former && e.reltype!=="formed")){ box.hidden=true; box.innerHTML=""; return; }
-  const rel=(e.related||[]).map(r=>{
-    const known=(window._idx||[]).some(o=>o.code===r.code);
-    return known ? `<button type="button" class="rellink" onclick="goToOrg('${r.code}')">${r.name}</button>`
-                 : `${r.name} (${r.code})`;
-  });
-  let msg;
-  if(e.former){
-    const when=_monthYear(e.closed);
-    msg=`<b>Closed${when?" "+when:""}.</b> This organisation was reorganised`+
-        (rel.length?` — see related organisation${rel.length>1?"s":""}: ${rel.join(", ")}.`:".")+
-        ` Its figures up to closure remain viewable here.`;
-  } else {
-    const when=_monthYear(e.opened);
-    msg=`<b>Formed${when?" "+when:""}.</b> This is a new organisation`+
-        (rel.length?`, drawing on the area${rel.length>1?"s":""} of: ${rel.join(", ")}.`:".")+
-        ` Earlier months are not available under this code.`;
-  }
-  box.innerHTML=msg; box.hidden=false;
-}
 
 function render(){
   // If the org we switched to lacks the kept standard, fall back sensibly.
@@ -889,12 +519,6 @@ function resolveSeries(allStd, bdata, std){
   return base;
 }
 function activeOrgSeries(){ return resolveSeries(CURRENT.standards, BREAKDOWN, CURRENT_STD); }
-// --- rolling time-range window (big chart only) ---
-// The first month visible under the current RANGE, given a series' full month list.
-function firstVisibleMonth(months){
-  const n=RANGE_MONTHS[RANGE];
-  return (!isFinite(n) || months.length<=n) ? months[0] : months[months.length-n];
-}
 // Clip a series to months >= minMonth (months are "YYYY-MM", so string compare works).
 // Returns the series unchanged when nothing is clipped or it's already empty.
 function clipSeries(s, minMonth){
@@ -905,11 +529,8 @@ function clipSeries(s, minMonth){
   return Object.assign({}, s, {months:s.months.slice(i0), performance:s.performance.slice(i0),
     total:sl(s.total), data_status:sl(s.data_status), within_target:sl(s.within_target)});
 }
-function setRange(r){ if(RANGE===r || !(r in RANGE_MONTHS)) return; RANGE=r; renderBig(); }
 function syncRangeUI(){ document.querySelectorAll(".rangebtn").forEach(b=>{ const on=b.dataset.range===RANGE;
   b.classList.toggle("active", on); b.setAttribute("aria-pressed", on?"true":"false"); }); }
-// --- England comparison-line toggle ---
-function setShowEngland(on){ if(SHOW_ENGLAND===on) return; SHOW_ENGLAND=on; renderBig(); }
 function syncEnglandUI(){
   const wrap=document.getElementById("engwrap"), chk=document.getElementById("engchk");
   if(!wrap||!chk) return;
@@ -1180,17 +801,6 @@ function renderBig(){
   }
 }
 
-// A legend swatch: a short line in the entry's exact style, plus a marker where that
-// series renders one — a circle by default, or a SQUARE when `square` is true (matches
-// the low-reliability marker in the chart). Omit the marker for marker-less lines.
-function legendSwatch(lineAttrs, markAttrs, square){
-  const mark = !markAttrs ? ``
-    : square ? `<rect x="10.5" y="2.5" width="7" height="7" ${markAttrs}/>`
-             : `<circle cx="14" cy="6" r="3" ${markAttrs}/>`;
-  return `<svg width="28" height="12" style="vertical-align:middle;margin-right:5px">`+
-    `<line x1="1" y1="6" x2="27" y2="6" fill="none" ${lineAttrs}/>${mark}</svg>`;
-}
-
 // P.t reserves a header strip ABOVE the plotted data (the y-scale maps the highest
 // value to y=P.t, so nothing is ever drawn above it) — used to park the
 // "standards changed" annotation clear of the series wherever the data happens to sit.
@@ -1354,18 +964,6 @@ function bigTableHTML(s, nat){
     `<thead>${head}</thead><tbody>${rows}</tbody></table></div>`;
 }
 
-function attachTips(s){
-  const box=document.getElementById("chartbox");
-  box.querySelectorAll(".pt").forEach(c=>{
-    c.addEventListener("mouseenter",()=>showTip(+c.dataset.i, s));
-  });
-  // Keyboard parity: the focusable hit targets show the same tooltip on focus.
-  box.querySelectorAll(".pt.hit").forEach(c=>{
-    c.addEventListener("focus",()=>showTip(+c.dataset.i, s));
-    c.addEventListener("blur",hideTip);
-  });
-  box.addEventListener("mouseleave",hideTip);
-}
 function showTip(i, s){
   if(i<0||i>=s.performance.length) return;
   const tip=document.getElementById("tip"); if(!tip) return;
@@ -1379,56 +977,8 @@ function showTip(i, s){
   tip.style.top =(sc.y(s.performance[i])/BG.H*100)+"%";
   tip.style.display="block";
 }
-function hideTip(){const t=document.getElementById("tip"); if(t)t.style.display="none";}
 
-/* ---- expand modal ----
-   We MOVE the live .bigpanel into the overlay rather than cloning it, so the
-   route/modality dropdowns, tooltips, legend and download control are the same
-   nodes and keep working — no duplicated IDs, no re-wiring. On close we put it
-   back where it was. The SVG is width:100% so it simply scales up in the wider
-   modal; a renderBig() refresh keeps tooltips/markers consistent in the new box. */
-let EXPANDED=false, _panelHome=null;
-function setExpandLabel(){ const b=document.getElementById("expandbtn");
-  if(b) b.innerHTML = EXPANDED ? "&#10529; Exit full screen" : "&#10530; Expand"; }
-// Focus trap: keep Tab inside the dialog while it is open.
-function modalFocusables(){
-  const inner=document.querySelector("#chartmodal .modal-inner"); if(!inner) return [];
-  return [...inner.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])')]
-    .filter(el=>el.getClientRects().length);
-}
-function modalTrap(e){
-  if(!EXPANDED || e.key!=="Tab") return;
-  const f=modalFocusables(); if(!f.length) return;
-  const first=f[0], last=f[f.length-1];
-  if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
-  else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
-}
-function openModal(){
-  if(EXPANDED) return;
-  const panel=document.getElementById("bigpanel");
-  _panelHome={parent:panel.parentNode, next:panel.nextSibling};
-  document.getElementById("modalhost").appendChild(panel);
-  document.getElementById("chartmodal").hidden=false;
-  document.body.style.overflow="hidden";
-  // Hide + de-tab the rest of the page (the dialog content lives outside .wrap).
-  document.querySelectorAll(".wrap,.sitebar,.sitefoot").forEach(el=>{ el.setAttribute("aria-hidden","true"); el.inert=true; });
-  document.addEventListener("keydown", modalTrap, true);
-  EXPANDED=true; setExpandLabel(); renderBig();
-  setTimeout(()=>{ const c=document.getElementById("modalclose"); if(c) c.focus(); },0);
-}
-function closeModal(){
-  if(!EXPANDED) return;
-  const panel=document.getElementById("bigpanel");
-  closePanel(); closeModPanel(); closeDlPanel();
-  if(_panelHome) _panelHome.parent.insertBefore(panel, _panelHome.next);
-  document.getElementById("chartmodal").hidden=true;
-  document.body.style.overflow="";
-  document.querySelectorAll(".wrap,.sitebar,.sitefoot").forEach(el=>{ el.removeAttribute("aria-hidden"); el.inert=false; });
-  document.removeEventListener("keydown", modalTrap, true);
-  EXPANDED=false; setExpandLabel(); renderBig();
-  const eb=document.getElementById("expandbtn"); if(eb) eb.focus();   // return focus to the trigger
-}
-function toggleExpand(){ EXPANDED ? closeModal() : openModal(); }
+/* The expand modal is shared: assets/dashboard.js. */
 
 /* ---- download chart as image (PNG / SVG) ----
    Builds a SELF-CONTAINED export SVG: a header strip (title + organisation +
@@ -1439,26 +989,6 @@ function toggleExpand(){ EXPANDED ? closeModal() : openModal(); }
    <svg>, so the export captures EXACTLY what's displayed (current group / route /
    modality slice, all states, the in-chart "standards changed" marker, the
    right-margin target label and the axis). */
-function closeDlPanel(){ const p=document.getElementById("dlpanel"); if(p)p.hidden=true;
-  const b=document.getElementById("dlbtn"); if(b)b.setAttribute("aria-expanded","false"); }
-function toggleDlPanel(){ const p=document.getElementById("dlpanel");
-  if(p && !p.hidden){ closeDlPanel(); return; }
-  if(p){ document.getElementById("dlcsv").disabled=!CSV_DATA;
-    p.hidden=false; document.getElementById("dlbtn").setAttribute("aria-expanded","true"); } }
-
-// Resolve var(--x) → literal value from :root (canvas rasterisation ignores CSS vars).
-function resolvePalette(str){
-  const cs=getComputedStyle(document.documentElement);
-  return str.replace(/var\((--[a-z-]+)\)/g, (m,k)=>{ const v=cs.getPropertyValue(k).trim(); return v||m; });
-}
-// XML-escape text node content (titles/labels may contain & < >).
-function xmlEsc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-// Escape for use inside a double-quoted HTML/SVG attribute (adds the quote).
-function escAttr(s){ return xmlEsc(s).replace(/"/g,"&quot;"); }
-// Polite screen-reader announcement (chart updated / empty state). Re-set even to
-// the same text by clearing first, so repeated identical updates are re-announced.
-function announce(msg){ const l=document.getElementById("live"); if(!l) return;
-  l.textContent=""; setTimeout(()=>{ l.textContent=msg; },30); }
 
 // Legend rebuilt as flat SVG (the on-page legend is HTML). Mirrors renderBig's
 // item set/order/styles exactly. Monospace ⇒ width is predictable (~6.3px/char).
@@ -1507,14 +1037,6 @@ function buildExportSVG(){
   return resolvePalette(svg);
 }
 
-// NHS org names are ALL-CAPS in source; title-case for a readable filename while
-// preserving common acronyms (NHS Foundation Trust → Airedale NHS Foundation Trust).
-function humanName(name){
-  const keep=new Set(["NHS","FT","ICB","UHB","CCG","HMP","STH"]), small=new Set(["AND","OF","THE","FOR"]);
-  return name.split(/\s+/).map(w=>{ const u=w.toUpperCase();
-    return keep.has(u) ? u : small.has(u) ? w.toLowerCase()
-         : w.charAt(0).toUpperCase()+w.slice(1).toLowerCase(); }).join(" ");
-}
 // Filename, e.g. Airedale-NHS-Foundation-Trust-CMB62-Haematology.png
 function exportName(ext){
   const parts=[CURRENT.isNational?"England":humanName(CURRENT.name), CURRENT_STD, GROUP||"All cancers"];
@@ -1523,47 +1045,8 @@ function exportName(ext){
   const slug=parts.join("-").replace(/[^A-Za-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
   return slug+"."+ext;
 }
-/* ---------- CSV download of the figures in the current chart ----------
-   Each data-table builder also records CSV_DATA from the SAME clipped series, so the
-   download always matches what is on screen (organisation, filters, time range).
-   Numbers are raw (no thousands separators, % to 2 dp) so they work in a spreadsheet. */
-let CSV_DATA=null;
-const pct2 = p => p==null ? "" : +(p*100).toFixed(2);
-function csvCell(v){ if(v==null) return ""; const t=String(v); return /[",\r\n]/.test(t) ? '"'+t.replace(/"/g,'""')+'"' : t; }
-function downloadCSV(){
-  if(!CSV_DATA) return;
-  const ctx=[CURRENT.isNational?"England":humanName(CURRENT.name), CURRENT.isNational?"":CURRENT.code,
-             document.getElementById("bigttl").textContent, csvFilter()];
-  const head=["Organisation","Code","Chart","Selection",...CSV_DATA.header];
-  const lines=[head, ...CSV_DATA.rows.map(r=>[...ctx,...r])].map(r=>r.map(csvCell).join(","));
-  lines.push("", csvCell(`Source: NHS England, via ${location.origin}${location.pathname}. Downloaded ${new Date().toISOString().slice(0,10)}.`));
-  // BOM so Excel opens accented names correctly.
-  saveBlob(new Blob(["\ufeff"+lines.join("\r\n")+"\r\n"],{type:"text/csv;charset=utf-8"}), exportName("csv"));
-}
+// The "Selection" column of the CSV download (the download itself is in assets/dashboard.js).
 function csvFilter(){ return [GROUP||"All cancers", ROUTE, MOD].filter(Boolean).join(", "); }
-function saveBlob(blob, name){
-  const url=URL.createObjectURL(blob), a=document.createElement("a");
-  a.href=url; a.download=name; document.body.appendChild(a); a.click();
-  a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1500);
-}
-function downloadChart(kind){
-  const svg=buildExportSVG();
-  if(!svg) return;
-  if(kind==="svg"){ saveBlob(new Blob([svg],{type:"image/svg+xml;charset=utf-8"}), exportName("svg")); return; }
-  // PNG: rasterise the export SVG to a 2× canvas (white background already painted).
-  const scale=2, {W,H}=BG, headerH=72, w=W*scale, h=(H+headerH)*scale;
-  const img=new Image();
-  const url=URL.createObjectURL(new Blob([svg],{type:"image/svg+xml;charset=utf-8"}));
-  img.onload=()=>{
-    const c=document.createElement("canvas"); c.width=w; c.height=h;
-    const ctx=c.getContext("2d"); ctx.scale(scale,scale);
-    ctx.drawImage(img,0,0);
-    URL.revokeObjectURL(url);
-    c.toBlob(b=>{ if(b) saveBlob(b, exportName("png")); }, "image/png");
-  };
-  img.onerror=()=>{ URL.revokeObjectURL(url); };
-  img.src=url;
-}
 
 init();
 </script>

@@ -62,6 +62,13 @@ jobs:
         # any file, so a bad fetch / definitional change fails this step and the deploy
         # never ships stale or partial RTT data.
         run: python -m pipeline_rtt.run
+      - name: Fetch new data and rebuild site (A&E)
+        if: ${{ !inputs.skip_fetch }}
+        # Scrapes the A&E FY pages, fetches new/revised monthly CSVs, the System Mapping
+        # Files and NHS England's time series, then rebuilds site/ae/data after all three
+        # fail-loud gates (TOTAL row, time series, ICB sum). On the publish path the
+        # committed site/ae/data ships as-is, like RTT's.
+        run: python -m pipeline_ae.run
       - name: Commit refreshed data + manifest
         if: ${{ !inputs.skip_fetch }}
         # Only commit when something OTHER than meta.json's built_at changed.
@@ -72,8 +79,8 @@ jobs:
         run: |
           git config user.name "cwt-bot"
           git config user.email "cwt-bot@users.noreply.github.com"
-          git add data/manifest.json data/processed site/cancer/data data_rtt/manifest.json site/rtt/data ods_classification.json
-          if git diff --cached --quiet -- . ':(exclude)site/cancer/data/meta.json' ':(exclude)site/rtt/data/meta.json'; then
+          git add data/manifest.json data/processed site/cancer/data data_rtt/manifest.json site/rtt/data data_ae/manifest.json site/ae/data ods_classification.json
+          if git diff --cached --quiet -- . ':(exclude)site/cancer/data/meta.json' ':(exclude)site/rtt/data/meta.json' ':(exclude)site/ae/data/meta.json'; then
             echo "No data change (only meta.json built_at) — skipping no-op commit."
           else
             git commit -m "Auto update CWT data"

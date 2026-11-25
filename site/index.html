@@ -22,7 +22,8 @@
   h1{font-size:32px;margin:0 0 4px;letter-spacing:-.01em}
   .sub{font-family:inherit;font-size:12px;
     text-transform:uppercase;letter-spacing:.14em;color:var(--ink-soft)}
-  .cards{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  @media(max-width:900px){.cards{grid-template-columns:1fr 1fr}}
   @media(max-width:680px){.cards{grid-template-columns:1fr}}
   a.card{display:block;background:var(--panel);border:1px solid var(--line);
     border-top:3px solid var(--accent);border-radius:0;padding:22px 22px 20px;
@@ -72,6 +73,7 @@
   </header>
   <div class="note" id="stale-cancer" role="status" hidden></div>
   <div class="note" id="stale-rtt" role="status" hidden></div>
+  <div class="note" id="stale-ae" role="status" hidden></div>
   <div class="cards">
     <a class="card" href="cancer/">
       <h2>Cancer Waiting Times</h2>
@@ -83,6 +85,12 @@
       <h2>RTT Waiting Times</h2>
       <p>Referral to Treatment: % seen within 18 weeks, waiting list size, and long waiters,
         by provider, commissioner, and treatment function.</p>
+      <span class="go">Open dashboard &rarr;</span>
+    </a>
+    <a class="card" href="ae/">
+      <h2>A&amp;E Waiting Times</h2>
+      <p>% seen within 4 hours, attendances, and waits from decision to admit,
+        by provider and ICB, for all A&amp;E types or major emergency departments.</p>
       <span class="go">Open dashboard &rarr;</span>
     </a>
   </div>
@@ -106,7 +114,7 @@
 <script>
 // "Data may be out of date" per dashboard, from each one's meta.json (rule: assets/freshness.js).
 // Fail-quiet: if a meta.json can't be read, the landing page simply shows no note.
-[["cancer","Cancer"],["rtt","RTT"]].forEach(([dir, what])=>{
+[["cancer","Cancer"],["rtt","RTT"],["ae","A&E"]].forEach(([dir, what])=>{
   fetch(dir+"/data/meta.json",{cache:"no-store"}).then(r=>r.json()).then(m=>{
     if(window.Freshness && m.months && m.months.length)
       Freshness.show(document.getElementById("stale-"+dir), m.months[m.months.length-1], what);
@@ -116,6 +124,7 @@
 // "What's new": newest first. Add an entry when a change is visible to users; old ones drop
 // off by themselves after WHATS_NEW_DAYS, so the panel never needs tidying (DECISIONS 2026-11-23).
 const WHATS_NEW=[
+  ["2026-11-25", "New <b>A&amp;E Waiting Times</b> dashboard: 4-hour performance, attendances and waits for admission, by trust and ICB."],
   ["2026-11-23", "Download the figures behind any chart as a spreadsheet: <b>Download &#9662; &rarr; CSV data</b>, on both dashboards."],
   ["2026-11-20", "RTT: England figures now include NHS England's published total, and months with missing trust data are clearly marked."],
 ];

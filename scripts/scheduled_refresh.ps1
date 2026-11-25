@@ -10,7 +10,9 @@ What it does, in order:
   2. run the tests
   3. python -m pipeline.run       (cancer: fetch new/revised NHS files, all gates)
   4. python -m pipeline_rtt.run   (RTT: fetch new/revised months, both gates)
-  5. if any data changed (ignoring meta.json's build timestamp): commit, push, and
+  5. python -m pipeline_ae.run    (A&E: fetch new/revised months, mapping files and the
+                                   time series, three gates)
+  6. if any data changed (ignoring meta.json's build timestamp): commit, push, and
      start the publish workflow; otherwise discard the timestamp-only changes and exit
 On any failure it stops, leaves the repo untouched (no commit/push), writes the log, and
 (optionally) opens a GitHub issue so the failure is emailed to repo watchers.
@@ -51,8 +53,9 @@ function Invoke-Step([string]$label, [string]$exe, [string[]]$argv) {
 }
 
 $DataPaths = @("data/manifest.json", "data/processed", "site/cancer/data",
-               "data_rtt/manifest.json", "site/rtt/data", "ods_classification.json")
-$MetaFiles = @("site/cancer/data/meta.json", "site/rtt/data/meta.json")
+               "data_rtt/manifest.json", "site/rtt/data",
+               "data_ae/manifest.json", "site/ae/data", "ods_classification.json")
+$MetaFiles = @("site/cancer/data/meta.json", "site/rtt/data/meta.json", "site/ae/data/meta.json")
 
 Write-Log "==== Scheduled refresh started (python: $Python) ===="
 Write-Host "Refreshing (takes ~4-5 minutes, no output here). Log: $Log"
@@ -74,6 +77,7 @@ try {
     $touched = $true
     Invoke-Step "cancer pipeline" $Python @("-m", "pipeline.run")
     Invoke-Step "RTT pipeline"    $Python @("-m", "pipeline_rtt.run")
+    Invoke-Step "A&E pipeline"    $Python @("-m", "pipeline_ae.run")
 
     git add -- $DataPaths
     # Same rule as the workflow: a change to meta.json's build timestamp alone is not new data.

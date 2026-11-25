@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NHS A&amp;E Waiting Times Dashboard</title>
+<link rel="stylesheet" href="../assets/sdpl.css?v=1">
+<link rel="stylesheet" href="../assets/dashboard.css?v=1">
+<!-- Visitor counts: GoatCounter (cookieless, no personal data). Stats: https://sdpl-waitingtimes.goatcounter.com -->
+<script data-goatcounter="https://sdpl-waitingtimes.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
+</head>
+<body>
+<header class="sitebar">
+  <div class="sitebar-in">
+    <a class="brand" href="https://surgicaldatapolicy.org/"><img src="../assets/sdpl-seal.png" alt="" width="44" height="44"><span>Surgical Data and Policy Lab</span></a>
+    <nav class="sitelinks" aria-label="Surgical Data and Policy Lab"><a href="https://surgicaldatapolicy.org/tools/">All tools</a></nav>
+  </div>
+</header>
+<div class="wrap">
+  <header>
+    <h1>NHS <em>A&amp;E Waiting Times</em> Dashboard</h1>
+    <div class="sub">England &middot; A&amp;E: 4-hour waits, attendances &amp; waits for admission</div>
+    <nav class="dashnav" aria-label="Site">
+      <a href="../">&larr; Home</a>
+    </nav>
+  </header>
+  <div class="note" id="stalenote" role="status" hidden></div>
+
+  <div class="controls">
+    <div>
+      <label id="orgtypelabel">Organisation</label>
+      <div class="typebtns" id="typebtns" role="group" aria-labelledby="orgtypelabel">
+        <button type="button" class="typebtn" data-type="national" aria-pressed="false">England</button>
+        <button type="button" class="typebtn" data-type="provider" aria-pressed="false">Providers</button>
+        <button type="button" class="typebtn" data-type="icb" aria-pressed="false">ICBs</button>
+      </div>
+      <!-- Provider-type sub-filter: scopes the org dropdown (Providers view only). Default NHS Trusts. -->
+      <div class="ptyperow" id="ptyperow" hidden>
+        <label id="ptypelabel">Provider type</label>
+        <div class="typebtns" id="ptypebtns" role="group" aria-labelledby="ptypelabel">
+          <button type="button" class="typebtn ptypebtn" data-ptype="trust" aria-pressed="false">NHS Trusts</button>
+          <button type="button" class="typebtn ptypebtn" data-ptype="independent" aria-pressed="false">Other providers</button>
+        </div>
+      </div>
+      <div class="orgrow">
+        <div class="fdrop orgbtnwrap" id="orgdrop">
+          <button id="orgbtn" class="filterbtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="orgoptions">
+            <span id="orglabel">England — all-England</span><span class="caret">&#9662;</span></button>
+          <div id="orgpanel" class="filterpanel" hidden>
+            <input id="orgsearch" class="dropsearch" type="search" autocomplete="off"
+              aria-label="Filter organisations" aria-controls="orgoptions"
+              placeholder="Type a trust, centre or ICB name or code&hellip;">
+            <div id="orgoptions" role="listbox" aria-label="Organisations"></div>
+          </div>
+        </div>
+        <div class="orgname" id="orgname"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contextual org-lifecycle note: shown when a former / newly-formed org is selected. -->
+  <div class="orgnote" id="orgnote" hidden></div>
+
+  <!-- Three summary cards = the MEASURE switcher (% within 4 hours / attendances / waits for admission) -->
+  <div class="cards" id="cards"></div>
+
+  <div class="bigpanel" id="bigpanel">
+    <div class="ttl"><h2 id="bigttl"></h2><span class="tag" id="bigtag"></span>
+      <span class="charttools" id="charttools">
+        <button type="button" id="expandbtn" class="toolbtn" title="Open the chart full-screen">&#10530; Expand</button>
+        <span class="fdrop" style="display:inline-block">
+          <button type="button" id="dlbtn" class="toolbtn" aria-haspopup="true" aria-expanded="false"
+            title="Download the chart as an image, or its figures as a spreadsheet">&#10515; Download &#9662;</button>
+          <div id="dlpanel" class="filterpanel dlmenu" hidden>
+            <button type="button" class="fopt" id="dlpng">PNG image</button>
+            <button type="button" class="fopt" id="dlsvg">SVG vector</button>
+            <button type="button" class="fopt" id="dlcsv">CSV data (spreadsheet)</button>
+          </div>
+        </span>
+      </span>
+    </div>
+    <div class="filterbar">
+      <!-- Department type: drives the % and attendance measures (cards + chart). -->
+      <span class="fgrp" id="deptwrap">
+        <span class="flabel" id="deptlabel">Department</span>
+        <span class="segbtns" id="deptbtns" role="group" aria-labelledby="deptlabel">
+          <button type="button" class="segbtn" data-dept="all" aria-pressed="false">All types</button>
+          <button type="button" class="segbtn" data-dept="t1" aria-pressed="false">Type 1</button>
+        </span>
+      </span>
+      <!-- Wait threshold: shows ONLY for the "Waits for admission" measure -->
+      <span class="fgrp" id="threshwrap" hidden>
+        <span class="flabel" id="threshlabel">Waiting over</span>
+        <span class="segbtns" id="threshbtns" role="group" aria-labelledby="threshlabel">
+          <button type="button" class="segbtn" data-th="4" aria-pressed="false">4 hours</button>
+          <button type="button" class="segbtn" data-th="12" aria-pressed="false">12 hours</button>
+        </span>
+      </span>
+      <span class="fgrp" id="engwrap">
+        <label class="engtoggle"><input type="checkbox" id="engchk" checked> Show England</label>
+      </span>
+      <span class="fgrp" id="mswrap">
+        <label class="engtoggle"><input type="checkbox" id="mschk" checked> Show planning milestones</label>
+      </span>
+      <span class="rangewrap" id="rangewrap">
+        <span class="flabel">Time range</span>
+        <span class="segbtns" id="rangebtns" role="group" aria-label="Time range">
+          <button type="button" class="segbtn" data-range="all" aria-pressed="false">All</button>
+          <button type="button" class="segbtn" data-range="3y" aria-pressed="false">3 years</button>
+          <button type="button" class="segbtn" data-range="12m" aria-pressed="false">12 months</button>
+        </span>
+      </span>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div class="chartbox" id="chartbox"></div>
+  </div>
+
+  <div class="note" id="breaknote">Loading&hellip;</div>
+
+  <footer id="foot"></footer>
+</div>
+<footer class="sitefoot">
+  <div class="sitefoot-in">
+    <div><b>Surgical Data and Policy Lab</b><p>Dashboards developed by <a href="https://www.linkedin.com/in/drjmartins/" target="_blank" rel="noopener">Dr João Martins</a>.</p></div>
+    <nav aria-label="Lab links"><a href="https://surgicaldatapolicy.org/">surgicaldatapolicy.org</a><a href="https://surgicaldatapolicy.org/tools/">All tools</a></nav>
+  </div>
+</footer>
+
+<div id="chartmodal" class="modal" role="dialog" aria-modal="true" aria-label="Expanded chart" hidden>
+  <div class="modal-backdrop" id="modalbackdrop"></div>
+  <div class="modal-inner">
+    <button type="button" class="modal-close" id="modalclose" title="Close (Esc)" aria-label="Close expanded chart">&#10005;</button>
+    <div class="modal-host" id="modalhost"></div>
+  </div>
+</div>
+
+<!-- Polite live region: announces chart updates + empty states to screen readers. -->
+<div id="live" class="vh" aria-live="polite" aria-atomic="true"></div>
+
+<script src="../assets/freshness.js?v=1"></script>
+<script src="../assets/dashboard.js?v=1"></script>
+<script>
+/* A&E dashboard (DECISIONS 2026-11-25). Shared code (org picker, expand modal, downloads,
+   tooltips plumbing) lives in assets/dashboard.js; this page holds the A&E measures. */
+const EXPORT_HEADER_H = 58;              // export image header: title and subtitle
+const THRESH = 10;                       // pipeline RELIABILITY_THRESHOLD: denominator < this = low reliability
+let META=null, NATIONAL=null, CURRENT=null, BREAKDOWN=null;
+let MEASURE="pct4";                      // pct4 | attend | dta  (the three cards)
+let DEPT="all";                          // all | t1  (department type, for pct4 and attend)
+let DTATH=12;                            // decision-to-admit wait threshold: 4 | 12 hours
+let CURRENT_TYPE="national";             // national | provider | icb
+let PTYPE="trust";                       // provider-type filter: trust | independent (default NHS Trusts)
+let RANGE="all";                         // default: all months (as the other dashboards)
+let SHOW_MILESTONES=true;                // planning milestones (England, all types, % measure only)
+let SHOW_ENGLAND=true;                   // England comparison overlay (% measure only)
+let ACTIVE_NAT=null;                     // England overlay currently drawn (for tooltip scaling)
+
+const MEASURES=[
+  {key:"pct4",   title:"% within 4 hours", kind:"rate"},
+  {key:"attend", title:"Attendances",      kind:"count"},
+  {key:"dta",    title:"Waits for admission", kind:"count"},
+];
+const measureMeta = k => MEASURES.find(m=>m.key===k);
+const DEPT_NAME = {all:"All A&E types", t1:"Type 1 (major emergency departments)"};
+const DEPT_SHORT = {all:"All types", t1:"Type 1"};
+const usesDept = m => m==="pct4" || m==="attend";
+
+const targetPct = () => Math.round(META.standard_target*100)+"%";   // "95%" — no decimal
+
+function footerHTML(M){
+  const latest=fullMonth(M.months[M.months.length-1]), built=isoDate(M.built_at);
+  return `Data source: <a href="https://www.england.nhs.uk/statistics/statistical-work-areas/ae-waiting-times-and-activity/" target="_blank" rel="noopener">NHS England A&amp;E Attendances and Emergency Admissions statistics</a>, published monthly and used here under the Open Government Licence v3.0. This dashboard is an independent tool and is not affiliated with or endorsed by NHS England.<br><br>`+
+    `Data to ${latest}. Last updated ${built}. Every month's England figures match NHS England's published A&amp;E time series exactly.<br><br>`+
+    `<b>% within 4 hours</b> is the share of attendances where the patient was admitted, transferred or discharged within 4 hours of arrival, including booked appointments, as NHS England calculates it. `+
+    `<b>All types</b> covers major emergency departments (Type 1), single-specialty departments such as eye hospitals (Type 2) and urgent treatment centres, minor injury units and walk-in centres (Type 3). `+
+    `<b>Waits for admission</b> are patients who waited more than 4 or 12 hours from the decision to admit them to their admission (sometimes called trolley waits); this is not the time from arrival.<br><br>`+
+    `Provider figures are as each organisation reports them. NHS England also publishes trust figures that include Type 3 activity run by other organisations nearby; those are not shown here. `+
+    `ICB figures add up the providers in each ICB, using NHS England's mapping of providers to ICBs for that financial year; they describe services in the ICB's area, not only its residents.<br><br>`+
+    `Providers with very little recent activity (no month reaching 100 attendances in the past year) are hidden.`;
+}
+
+async function init(){
+  META = await (await fetch(DATA+"meta.json",{cache:"no-store"})).json();
+  DV = (META.built_at||"").replace(/\D/g,"");
+  if(window.Freshness) Freshness.show(document.getElementById("stalenote"), META.months[META.months.length-1]);
+  document.getElementById("foot").innerHTML = footerHTML(META);
+  NATIONAL = await (await fetch(durl("national.json"))).json();
+  const idx = await (await fetch(durl("index.json"))).json();
+  window._idx = idx;
+  document.getElementById("breaknote").innerHTML =
+    "&#9888; NHS England's 12-hour measure from arrival (published separately from Emergency Care Data Set records) is not shown here.";
+
+  document.querySelectorAll("#typebtns .typebtn").forEach(b=>b.addEventListener("click",()=>setType(b.dataset.type)));
+  document.querySelectorAll("#ptypebtns .ptypebtn").forEach(b=>b.addEventListener("click",()=>setPtype(b.dataset.ptype)));
+  document.getElementById("orgbtn").addEventListener("click", toggleOrgPanel);
+  document.getElementById("orgsearch").addEventListener("input", e=>buildOrgOptions(e.target.value));
+  document.getElementById("orgsearch").addEventListener("keydown", dropSearchKey);
+  document.addEventListener("click", e=>{ if(!e.target.closest(".fdrop")){ closeOrgPanel(); closeDlPanel(); } });
+  document.getElementById("expandbtn").addEventListener("click", toggleExpand);
+  document.getElementById("modalclose").addEventListener("click", closeModal);
+  document.getElementById("modalbackdrop").addEventListener("click", closeModal);
+  document.addEventListener("keydown", e=>{ if(e.key==="Escape" && EXPANDED) closeModal(); });
+  document.getElementById("dlbtn").addEventListener("click", toggleDlPanel);
+  document.getElementById("dlpng").addEventListener("click", ()=>{ closeDlPanel(); downloadChart("png"); });
+  document.getElementById("dlsvg").addEventListener("click", ()=>{ closeDlPanel(); downloadChart("svg"); });
+  document.getElementById("dlcsv").addEventListener("click", ()=>{ closeDlPanel(); downloadCSV(); });
+  document.querySelectorAll("#rangebtns .segbtn").forEach(b=>b.addEventListener("click", ()=>setRange(b.dataset.range)));
+  document.querySelectorAll("#deptbtns .segbtn").forEach(b=>b.addEventListener("click", ()=>setDept(b.dataset.dept)));
+  document.querySelectorAll("#threshbtns .segbtn").forEach(b=>b.addEventListener("click", ()=>setThresh(+b.dataset.th)));
+  document.getElementById("engchk").addEventListener("change", e=>setShowEngland(e.target.checked));
+  document.getElementById("mschk").addEventListener("change", e=>setShowMilestones(e.target.checked));
+
+  // Deep-link / render hooks: ?org=CODE, ?measure=, ?dept=t1, ?th=4, ?range=, ?england=off, ?milestones=off
+  const qs = new URLSearchParams(location.search);
+  const qM = (qs.get("measure")||"").toLowerCase(); if(measureMeta(qM)) MEASURE=qM;
+  const qD = qs.get("dept"); if(qD in DEPT_NAME) DEPT=qD;
+  const qTh = +qs.get("th"); if([4,12].includes(qTh)) DTATH=qTh;
+  const qRange = qs.get("range"); if(qRange && (qRange in RANGE_MONTHS)) RANGE=qRange;
+  if(qs.get("england")==="off") SHOW_ENGLAND=false;
+  if(qs.get("milestones")==="off") SHOW_MILESTONES=false;
+  const qOrg = qs.get("org");
+  const qo = qOrg && qOrg!==NATIONAL_CODE && idx.find(o=>o.code===qOrg);
+  if(qo) await setType(qo.level, qo.code); else await setType("national");
+  if(qs.get("expand")==="open") openModal();
+  const qOrgq=qs.get("orgq");
+  if(qOrgq!=null && CURRENT_TYPE!=="national"){
+    openOrgPanel();
+    const e=document.getElementById("orgsearch"); e.value=qOrgq; buildOrgOptions(qOrgq);
+  }
+}
+
+function render(){
+  // Byline beside the dropdown: NHS region only (the org name is already in the dropdown).
+  document.getElementById("orgname").textContent = CURRENT.isNational
+    ? "" : (CURRENT.region && CURRENT.region!=="England" ? CURRENT.region : "");
+  closeDlPanel();
+  renderCards();
+  renderBig();
+}
+
+/* ---------- series ---------- */
+// A provider can miss months (or stop and restart). Lay its figures out on every month from
+// its first to its last, so a missing month is a gap in the line rather than closing up.
+function padMonths(src){
+  const ms=src.months; if(!ms.length) return {months:[], at:{}};
+  const all=NATIONAL.months.filter(m=>m>=ms[0] && m<=ms[ms.length-1]);
+  const at=Object.fromEntries(ms.map((m,i)=>[m,i]));
+  return {months:all, at};
+}
+const pick = (arr, months, at) => months.map(m => m in at ? arr[at[m]] : null);
+function rateSeries(src, dept){
+  const {months, at}=padMonths(src), d=src.measures.pct4[dept];
+  return {months, performance:pick(d.performance,months,at), within_target:pick(d.within_target,months,at),
+    total:pick(d.total,months,at), target:META.standard_target};
+}
+function countSeries(src, measure, dept, th){
+  const {months, at}=padMonths(src);
+  if(measure==="attend"){
+    const a=src.measures.attend[dept];
+    return {months, value:pick(a,months,at), label:dept==="t1"?"Type 1 attendances":"attendances",
+      unit:dept==="t1"?"Type 1 attendances":"attendances (all types)", lowerBetter:null};
+  }
+  const d=src.measures.dta;
+  return {months, value:pick(d["w"+th],months,at), admissions:pick(d.admissions,months,at),
+    label:`waited over ${th} hours from decision to admit`, unit:`over ${th} hours from decision to admit`, lowerBetter:true};
+}
+const hasType1 = src => (src.measures.attend.t1||[]).some(v=>+v>0);
+
+/* ---------- summary cards (the measure switcher) ---------- */
+function renderCards(){
+  const host=document.getElementById("cards"); host.innerHTML="";
+  for(const m of MEASURES){
+    const card=document.createElement("div");
+    card.tabIndex=0; card.dataset.key=m.key;
+    card.setAttribute("role","button");
+    card.setAttribute("aria-pressed", m.key===MEASURE?"true":"false");
+    card.className="scard"+(m.key===MEASURE?" active":"");
+    const choose=()=>{ if(MEASURE!==m.key){ MEASURE=m.key; renderCards(); renderBig(); } };
+    const eyebrow = usesDept(m.key) && DEPT==="t1" ? `<div class="stdcode">Type 1</div>` : "";
+    let body;
+    if(usesDept(m.key) && DEPT==="t1" && !hasType1(CURRENT)){
+      body=`<div class="mon" style="margin-top:10px">No Type 1 (major emergency) department here.</div>`;
+    } else if(m.kind==="rate"){
+      const s=rateSeries(CURRENT, DEPT), last=lastIdx(s.performance);
+      if(last<0){ body=`<div class="mon" style="margin-top:10px">No attendances reported.</div>`; }
+      else {
+        const cur=s.performance[last], meets=cur>=s.target;
+        // Against the 95% standard, and the current planning milestone where one applies.
+        const ms=currentMilestone(s.months[last]);
+        const msTxt = ms && !meets ? ` &middot; aim ${xmlEsc(ms.label)}` : "";
+        body=`<div class="figure"><b>${fmtPct(cur)}</b>
+            <span class="vs ${meets?'meets':'under'}">${meets?'&#10003; meets':'&#9660; below'} ${targetPct()} standard</span></div>
+          <div class="spark">${sparkLine(s.performance.map(v=>v), s.target, fmtPct)}</div>
+          <div class="mon">latest ${tipMonth(s.months[last])}${msTxt}</div>`;
+      }
+    } else {
+      const s=countSeries(CURRENT, m.key, DEPT, DTATH), last=lastIdx(s.value);
+      if(m.key==="dta" && !(s.admissions||[]).some(v=>+v>0)){
+        body=`<div class="mon" style="margin-top:10px">No emergency admissions via A&amp;E reported here.</div>`; }
+      else if(last<0){ body=`<div class="mon" style="margin-top:10px">No figures reported.</div>`; }
+      else {
+        const cur=+s.value[last];
+        let vs;
+        const prev = last>=12 ? s.value[last-12] : null;
+        if(prev!=null){
+          const yoy=+prev, delta=cur-yoy, dpct=yoy?delta/yoy*100:0;
+          const arrow=delta===0?"":(delta<0?"&#9660;":"&#9650;");
+          const mag=Math.abs(dpct), shown=mag<1 ? mag.toFixed(1) : mag.toFixed(0);
+          // Fewer waits is better; attendances are activity, neither better nor worse.
+          const cls = s.lowerBetter ? (delta<0?"meets":delta>0?"under":"") : "";
+          vs = yoy ? `<span class="vs ${cls}">${arrow} ${shown}% vs yr ago</span>`
+                   : `<span class="vs">${cur===0?"none now or a year ago":"none a year ago"}</span>`;
+        } else vs=`<span class="vs">no year-ago data</span>`;
+        const sub = m.key==="dta" ? `&gt; ${DTATH} hrs from decision to admit` : (DEPT==="t1"?"Type 1 attendances":"attendances, all types");
+        body=`<div class="figure"><b>${fmtCompact(cur)}</b>${vs}</div>
+          <div class="spark">${sparkLine(s.value.map(v=>v==null?null:+v), null, commas, true)}</div>
+          <div class="mon">${sub} &middot; latest ${tipMonth(s.months[last])}</div>`;
+      }
+    }
+    card.innerHTML=`${eyebrow}<h3>${m.title}</h3>${body}`;
+    card.addEventListener("click",choose);
+    card.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();choose();}});
+    host.appendChild(card);
+  }
+}
+// The planning milestone in force for a month: the first whose deadline is on or after it.
+function currentMilestone(month){
+  return (META.milestones||[]).filter(m=>m.by>=month).sort((a,b)=>a.by.localeCompare(b.by))[0] || null;
+}
+// Sparkline over the last ~15 months; skips months with no figure. `target` draws the
+// dashed standard line (rates); `zero` starts the scale at 0 (counts).
+function sparkLine(all, target, fmt, zero){
+  const W=190,H=42,P=3, k=Math.min(15,all.length), vals=all.slice(-k);
+  const real=vals.filter(v=>v!=null); if(!real.length) return "";
+  let lo=zero?0:Math.min(...real,target??Infinity), hi=Math.max(...real,target??-Infinity, zero?1:-Infinity);
+  if(!zero){ const pad=(hi-lo)*0.22||0.02; lo-=pad; hi+=pad; }
+  const x=i=>P+(i/((k-1)||1))*(W-2*P), y=v=>P+(1-(v-lo)/((hi-lo)||1))*(H-2*P);
+  let path="";
+  for(let i=0;i<k-1;i++) if(vals[i]!=null && vals[i+1]!=null)
+    path+=`<path d="M${x(i).toFixed(1)} ${y(vals[i]).toFixed(1)} L${x(i+1).toFixed(1)} ${y(vals[i+1]).toFixed(1)}" fill="none" stroke="var(--org)" stroke-width="1.8"/>`;
+  const li=lastIdx(vals), fi=vals.findIndex(v=>v!=null);
+  const trend=vals[li]>vals[fi]?"rising":vals[li]<vals[fi]?"falling":"broadly flat";
+  const meets = target==null || vals[li]>=target;
+  const tl = target==null ? "" : `<line x1="${P}" y1="${y(target).toFixed(1)}" x2="${W-P}" y2="${y(target).toFixed(1)}" stroke="var(--target)" stroke-dasharray="3 2" stroke-width="1.1"/>`;
+  const slab=`Trend sparkline: ${trend} over the last ${k} months, latest ${fmt(vals[li])}`+(target==null?".":` versus the ${targetPct()} standard.`);
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="${escAttr(slab)}">${tl}${path}`+
+    `<circle cx="${x(li).toFixed(1)}" cy="${y(vals[li]).toFixed(1)}" r="2.8" fill="${meets?'var(--org)':'var(--target)'}"/></svg>`;
+}
+
+/* ---------- controls ---------- */
+function setDept(d){ if(DEPT===d || !(d in DEPT_NAME)) return; DEPT=d; renderCards(); renderBig(); }
+function setThresh(t){ if(DTATH===t) return; DTATH=t; renderCards(); renderBig(); }
+function setShowMilestones(on){ if(SHOW_MILESTONES===on) return; SHOW_MILESTONES=on; renderBig(); }
+// Milestones apply to the England headline: all types, % measure.
+function milestonesApply(){ return MEASURE==="pct4" && DEPT==="all" && !!CURRENT && CURRENT.isNational; }
+function syncControls(){
+  const seg=(sel,on)=>document.querySelectorAll(sel).forEach(b=>{ const a=on(b);
+    b.classList.toggle("active", a); b.setAttribute("aria-pressed", a?"true":"false"); });
+  seg("#rangebtns .segbtn", b=>b.dataset.range===RANGE);
+  seg("#deptbtns .segbtn", b=>b.dataset.dept===DEPT);
+  seg("#threshbtns .segbtn", b=>+b.dataset.th===DTATH);
+  document.getElementById("deptwrap").hidden = !usesDept(MEASURE);
+  document.getElementById("threshwrap").hidden = MEASURE!=="dta";
+  document.getElementById("engwrap").hidden = !(MEASURE==="pct4" && !CURRENT.isNational);
+  document.getElementById("engchk").checked = SHOW_ENGLAND;
+  document.getElementById("mswrap").hidden = !milestonesApply();
+  document.getElementById("mschk").checked = SHOW_MILESTONES;
+}
+
+/* ---------- big chart ---------- */
+const BG={W:920,H:380,P:{l:54,r:96,t:36,b:30}};
+const LBL_GAP=6;
+function renderBig(){
+  syncControls();
+  document.getElementById("bigtag").textContent = CURRENT.isNational ? "England" : CURRENT.name;
+  CSV_DATA=null;
+  if(measureMeta(MEASURE).kind==="rate") renderRate(); else renderCount();
+}
+function emptyChart(title, msg){
+  document.getElementById("bigttl").textContent = title;
+  document.getElementById("legend").innerHTML="";
+  document.getElementById("chartbox").innerHTML=`<div class="emptyslice" role="status">${msg}</div>`;
+  announce(msg);
+}
+const deptSuffix = () => DEPT==="t1" ? " — Type 1" : "";
+const orgLabel = () => CURRENT.isNational ? "England" : "this organisation";
+
+/* ----- % within 4 hours: 95% standard + planning milestones ----- */
+function renderRate(){
+  const title="% within 4 hours"+deptSuffix();
+  if(DEPT==="t1" && !hasType1(CURRENT)){ ACTIVE_NAT=null;
+    emptyChart(title, "This organisation has no Type 1 (major emergency) department. Choose All types."); return; }
+  const full=rateSeries(CURRENT, DEPT);
+  document.getElementById("bigttl").textContent = title;
+  const minMonth=firstVisibleMonth(full.months);
+  const s=clipObj(full, minMonth);
+  if(lastIdx(s.performance)<0){ ACTIVE_NAT=null;
+    emptyChart(title, "No attendances were reported in the selected period. Choose All to see earlier months."); return; }
+  let nat=null;
+  if(SHOW_ENGLAND && !CURRENT.isNational) nat=clipObj(rateSeries(NATIONAL, DEPT), minMonth);
+  ACTIVE_NAT=nat;
+  const showMs = SHOW_MILESTONES && milestonesApply();
+  const hasLow = s.total.some(v=>v!=null && (+v)<THRESH);
+  const item=(sw,mk,sq,label)=>`<span class="lgitem">${legendSwatch(sw,mk,sq)}${label}</span>`;
+  const sep=`<span class="lgsep">&middot;</span>`;
+  const parts=[item(`stroke="var(--org)" stroke-width="2.4"`,`fill="var(--org)"`,false,orgLabel())];
+  if(hasLow) parts.push(item(`stroke="var(--org-muted)" stroke-width="1.8" stroke-dasharray="1.5 3"`,`fill="#fff" stroke="var(--org-muted)" stroke-width="1.6"`,true,`low reliability (n&lt;${THRESH})`));
+  if(nat) parts.push(item(`stroke="var(--nat)" stroke-width="1.6" opacity="0.85"`,null,false,"England"));
+  if(showMs) parts.push(item(`stroke="var(--milestone)" stroke-width="1.2" stroke-dasharray="2 3"`,null,false,"planning milestones"));
+  document.getElementById("legend").innerHTML = parts.join(sep);
+  document.getElementById("chartbox").innerHTML = rateSVG(s,nat,showMs) + rateTableHTML(s,nat) + `<div class="tip" id="tip"></div>`;
+  attachTips(s, "rate");
+  announce(rateSummary(s,nat));
+}
+function rateScales(s,nat,showMs){
+  const xs=s.months, n=xs.length;
+  const vals=s.performance.filter(v=>v!=null).concat([s.target]);
+  if(showMs) vals.push(...(META.milestones||[]).map(m=>m.target));
+  if(nat) vals.push(...nat.performance.filter(v=>v!=null));
+  let lo=Math.min(...vals), hi=Math.max(...vals);
+  const pad=(hi-lo)*0.08||0.02; lo=Math.max(0,lo-pad); hi=Math.min(1,hi+pad);
+  const {W,H,P}=BG;
+  return {xs,n,lo,hi, x:i=>P.l+(i/(n>1?n-1:1))*(W-P.l-P.r), y:v=>P.t+(1-(v-lo)/((hi-lo)||1))*(H-P.t-P.b)};
+}
+// Margin labels for lines that sit close together are nudged apart so they never overlap.
+function spreadLabels(items, minGap){
+  items.sort((a,b)=>a.y-b.y);
+  for(let i=1;i<items.length;i++) if(items[i].ly-items[i-1].ly<minGap) items[i].ly=items[i-1].ly+minGap;
+  return items;
+}
+function rateSVG(s,nat,showMs){
+  const {W,H,P}=BG, {xs,n,lo,hi,x,y}=rateScales(s,nat,showMs);
+  const span=hi-lo, step=span>0.5?0.1:0.05;
+  let g="";
+  for(let v=Math.ceil(lo/step)*step; v<=hi+1e-9; v+=step)
+    g+=`<line x1="${P.l}" y1="${y(v).toFixed(1)}" x2="${W-P.r}" y2="${y(v).toFixed(1)}" stroke="var(--grid)"/>`+
+       `<text x="${P.l-6}" y="${(y(v)+3).toFixed(1)}" font-size="10" text-anchor="end" fill="var(--ink-soft)">${Math.round(v*100)}%</text>`;
+  // Reference lines: the 95% standard (magenta) and the planning milestones (tan).
+  const refs=[{y:y(s.target), ly:y(s.target), label:`${targetPct()} standard`, std:true}];
+  if(showMs) for(const mm of (META.milestones||[])) if(mm.target>=lo && mm.target<=hi)
+    refs.push({y:y(mm.target), ly:y(mm.target), label:mm.label, std:false});
+  let lines="";
+  for(const r of spreadLabels(refs, 12)){
+    lines+= r.std
+      ? `<line x1="${P.l}" y1="${r.y.toFixed(1)}" x2="${W-P.r}" y2="${r.y.toFixed(1)}" stroke="var(--target)" stroke-dasharray="5 4" stroke-width="1.4"/>`+
+        `<text x="${W-P.r+LBL_GAP}" y="${r.ly.toFixed(1)}" dominant-baseline="central" font-size="10" text-anchor="start" fill="var(--target-text)">${xmlEsc(r.label)}</text>`
+      : `<line x1="${P.l}" y1="${r.y.toFixed(1)}" x2="${W-P.r}" y2="${r.y.toFixed(1)}" stroke="var(--milestone)" stroke-dasharray="2 3" stroke-width="1.1"/>`+
+        `<text x="${W-P.r+LBL_GAP}" y="${r.ly.toFixed(1)}" dominant-baseline="central" font-size="9" text-anchor="start" fill="var(--milestone-text)">${xmlEsc(r.label)}</text>`;
+  }
+  let natpath="";
+  if(nat){
+    const nm={}; nat.months.forEach((mo,j)=>nm[mo]=nat.performance[j]);
+    let d="", on=false;
+    for(let i=0;i<n;i++){ const v=nm[xs[i]]; if(v==null){on=false;continue;}
+      d+=(on?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1)+" "; on=true; }
+    if(d) natpath=`<path d="${d.trim()}" fill="none" stroke="var(--nat)" stroke-width="1.6" opacity="0.85"/>`;
+  }
+  let line="";
+  for(let i=0;i<n-1;i++){
+    if(s.performance[i]==null || s.performance[i+1]==null) continue;
+    const low=(+s.total[i])<THRESH || (+s.total[i+1])<THRESH;
+    line+=`<path d="M${x(i).toFixed(1)} ${y(s.performance[i]).toFixed(1)} L${x(i+1).toFixed(1)} ${y(s.performance[i+1]).toFixed(1)}" fill="none" `+
+      (low?`stroke="var(--org-muted)" stroke-width="1.8" stroke-dasharray="1.5 3"`:`stroke="var(--org)" stroke-width="2.4"`)+`/>`;
+  }
+  let pts="";
+  for(let i=0;i<n;i++){
+    if(s.performance[i]==null) continue;
+    const low=(+s.total[i])<THRESH, cx=+x(i).toFixed(1), cy=+y(s.performance[i]).toFixed(1);
+    const mk = low ? `<rect class="pt" data-i="${i}" x="${(cx-3.1).toFixed(1)}" y="${(cy-3.1).toFixed(1)}" width="6.2" height="6.2" fill="#fff" stroke="var(--org-muted)" stroke-width="1.6"/>`
+                   : `<circle class="pt" data-i="${i}" cx="${cx}" cy="${cy}" r="3.2" fill="var(--org)"/>`;
+    const lab=`${tipMonth(s.months[i])}: ${fmtPct(s.performance[i])}, ${commas(s.within_target[i])} of ${commas(s.total[i])} within 4 hours${low?", low reliability, n="+(+s.total[i]):""}`;
+    pts+=mk+`<circle class="pt hit" data-i="${i}" tabindex="0" role="img" aria-label="${escAttr(lab)}" cx="${cx}" cy="${cy}" r="11" fill="transparent"/>`;
+  }
+  const aria=rateSummary(s,nat);
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${escAttr(aria)}">`+
+    `<title>${xmlEsc(document.getElementById("bigttl").textContent)}</title><desc>${xmlEsc(aria)}</desc>`+
+    `${g}${natpath}${lines}${line}${xAxisSVG(xs,x)}${pts}</svg>`;
+}
+
+/* ----- counts (attendances / waits for admission): auto-scaling axis from 0 ----- */
+function renderCount(){
+  const title = MEASURE==="attend" ? "Attendances"+deptSuffix() : `Waits for admission — over ${DTATH} hours`;
+  if(MEASURE==="attend" && DEPT==="t1" && !hasType1(CURRENT)){
+    emptyChart(title, "This organisation has no Type 1 (major emergency) department. Choose All types."); return; }
+  const full=countSeries(CURRENT, MEASURE, DEPT, DTATH);
+  document.getElementById("bigttl").textContent = title;
+  const s=clipObj(full, firstVisibleMonth(full.months));
+  if(lastIdx(s.value)<0){ emptyChart(title, "No figures were reported in the selected period. Choose All to see earlier months."); return; }
+  ACTIVE_NAT=null;   // no England overlay for counts (scale)
+  const item=(sw,mk,label)=>`<span class="lgitem">${legendSwatch(sw,mk,false)}${label}</span>`;
+  document.getElementById("legend").innerHTML =
+    item(`stroke="var(--org)" stroke-width="2.4"`,`fill="var(--org)"`,orgLabel())+
+    `<span class="lgsep">&middot;</span><span class="lgitem" style="color:var(--ink-soft)">${xmlEsc(s.unit)}</span>`;
+  document.getElementById("chartbox").innerHTML = countSVG(s) + countTableHTML(s) + `<div class="tip" id="tip"></div>`;
+  attachTips(s, "count");
+  announce(countSummary(s));
+}
+function countScales(s){
+  const xs=s.months, n=xs.length, top=niceTop(Math.max(...s.value.filter(v=>v!=null).map(Number),1));
+  const {W,H,P}=BG;
+  return {xs,n,lo:0,hi:top, x:i=>P.l+(i/(n>1?n-1:1))*(W-P.l-P.r), y:v=>P.t+(1-v/top)*(H-P.t-P.b)};
+}
+function countSVG(s){
+  const {W,H,P}=BG, {xs,n,hi,x,y}=countScales(s);
+  let g="";
+  for(let t=0;t<=5;t++){ const v=hi*t/5;
+    g+=`<line x1="${P.l}" y1="${y(v).toFixed(1)}" x2="${W-P.r}" y2="${y(v).toFixed(1)}" stroke="var(--grid)"/>`+
+       `<text x="${P.l-6}" y="${(y(v)+3).toFixed(1)}" font-size="10" text-anchor="end" fill="var(--ink-soft)">${fmtAxis(v)}</text>`; }
+  let line="", pts="";
+  for(let i=0;i<n-1;i++){ if(s.value[i]==null || s.value[i+1]==null) continue;
+    line+=`<path d="M${x(i).toFixed(1)} ${y(+s.value[i]).toFixed(1)} L${x(i+1).toFixed(1)} ${y(+s.value[i+1]).toFixed(1)}" fill="none" stroke="var(--org)" stroke-width="2.4"/>`; }
+  for(let i=0;i<n;i++){ if(s.value[i]==null) continue;
+    const cx=+x(i).toFixed(1), cy=+y(+s.value[i]).toFixed(1);
+    const lab=`${tipMonth(s.months[i])}: ${commas(s.value[i])} ${s.label}`;
+    pts+=`<circle class="pt" data-i="${i}" cx="${cx}" cy="${cy}" r="3.2" fill="var(--org)"/>`+
+      `<circle class="pt hit" data-i="${i}" tabindex="0" role="img" aria-label="${escAttr(lab)}" cx="${cx}" cy="${cy}" r="11" fill="transparent"/>`; }
+  const aria=countSummary(s);
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${escAttr(aria)}">`+
+    `<title>${xmlEsc(document.getElementById("bigttl").textContent)}</title><desc>${xmlEsc(aria)}</desc>`+
+    `${g}${line}${xAxisSVG(xs,x)}${pts}</svg>`;
+}
+
+/* ---------- text alternatives: summaries + visually-hidden data tables (also the CSV) ---------- */
+const who = () => CURRENT.isNational ? "England" : CURRENT.name;
+function rateSummary(s,nat){
+  const last=lastIdx(s.performance), cur=s.performance[last];
+  return `${document.getElementById("bigttl").textContent}, ${who()}. Line chart of the monthly percentage of A&E attendances within 4 hours, `+
+    `${tipMonth(s.months[0])} to ${tipMonth(s.months[last])}. Latest ${tipMonth(s.months[last])}: ${fmtPct(cur)}, `+
+    `${cur>=s.target?"at or above":"below"} the ${targetPct()} standard${nat?"; England comparison shown":""}. Full figures are in the data table below the chart.`;
+}
+function countSummary(s){
+  const last=lastIdx(s.value);
+  return `${document.getElementById("bigttl").textContent}, ${who()}. Line chart of ${s.label} by month, `+
+    `${tipMonth(s.months[0])} to ${tipMonth(s.months[last])}. Latest ${tipMonth(s.months[last])}: ${commas(s.value[last])}. Full figures are in the data table below the chart.`;
+}
+function rateTableHTML(s,nat){
+  const natBy={}; if(nat) nat.months.forEach((mo,j)=>natBy[mo]=nat.performance[j]);
+  const title=document.getElementById("bigttl").textContent;
+  const status=i=> s.performance[i]==null ? "No data reported" : (+s.total[i])<THRESH ? `Low reliability (under ${THRESH} attendances)` : "Published";
+  let rows="";
+  for(let i=0;i<s.months.length;i++){
+    const nv=nat?`<td>${natBy[s.months[i]]!=null?fmtPct(natBy[s.months[i]]):"—"}</td>`:``;
+    rows+= s.performance[i]==null
+      ? `<tr><td>${tipMonth(s.months[i])}</td><td colspan="3">${status(i)}</td>${nv}</tr>`
+      : `<tr><td>${tipMonth(s.months[i])}</td><td>${fmtPct(s.performance[i])}</td><td>${commas(s.within_target[i])} of ${commas(s.total[i])}</td><td>${status(i)}</td>${nv}</tr>`;
+  }
+  CSV_DATA={header:["Month","% within 4 hours","Within 4 hours","Attendances","Data status",...(nat?["England % within 4 hours"]:[])],
+    rows:s.months.map((mo,i)=>{ const miss=s.performance[i]==null;
+      return [mo, pct2(s.performance[i]), miss?"":+s.within_target[i], miss?"":+s.total[i], status(i), ...(nat?[pct2(natBy[mo])]:[])]; })};
+  return `<div class="vh"><table><caption>Data table: ${xmlEsc(title)}, ${xmlEsc(who())} — the figures plotted above.</caption>`+
+    `<thead><tr><th scope="col">Month</th><th scope="col">% within 4 hours</th><th scope="col">Within 4 hours / attendances</th><th scope="col">Data status</th>`+
+    (nat?`<th scope="col">England</th>`:``)+`</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function countTableHTML(s){
+  const title=document.getElementById("bigttl").textContent;
+  const withAdm = MEASURE==="dta";
+  let rows="";
+  for(let i=0;i<s.value.length;i++)
+    rows+=`<tr><td>${tipMonth(s.months[i])}</td><td>${s.value[i]==null?"No data reported":commas(s.value[i])}</td>`+
+      (withAdm?`<td>${s.admissions[i]==null?"—":commas(s.admissions[i])}</td>`:``)+`</tr>`;
+  const head = MEASURE==="dta" ? `Patients waiting over ${DTATH} hours from decision to admit` : (DEPT==="t1"?"Type 1 attendances":"Attendances (all types)");
+  CSV_DATA={header:["Month",head,...(withAdm?["Emergency admissions via A&E"]:[])],
+    rows:s.months.map((mo,i)=>[mo, s.value[i]==null?"No data reported":+s.value[i], ...(withAdm?[s.admissions[i]==null?"":+s.admissions[i]]:[])])};
+  return `<div class="vh"><table><caption>Data table: ${xmlEsc(title)}, ${xmlEsc(who())} — the figures plotted above.</caption>`+
+    `<thead><tr><th scope="col">Month</th><th scope="col">${xmlEsc(head)}</th>`+(withAdm?`<th scope="col">Emergency admissions via A&amp;E</th>`:``)+
+    `</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+/* ---------- tooltips ---------- */
+function showTip(i, s, kind){
+  const tip=document.getElementById("tip"); if(!tip) return;
+  let sc, vy, html;
+  if(kind==="rate"){
+    if(s.performance[i]==null) return;
+    sc=rateScales(s, ACTIVE_NAT, SHOW_MILESTONES && milestonesApply()); vy=s.performance[i];
+    html=`${tipMonth(s.months[i])} &middot; <span class="pct">${fmtPct(s.performance[i])}</span><br>`+
+      `${commas(s.within_target[i])} of ${commas(s.total[i])} within 4 hours`;
+  } else {
+    if(s.value[i]==null) return;
+    sc=countScales(s); vy=+s.value[i];
+    html=`${tipMonth(s.months[i])} &middot; <span class="pct">${commas(s.value[i])}</span><br>${xmlEsc(s.label)}`+
+      (s.admissions && s.admissions[i]!=null ? `<br>of ${commas(s.admissions[i])} emergency admissions via A&amp;E` : ``);
+  }
+  tip.innerHTML=html;
+  const fx=sc.x(i)/BG.W;
+  tip.style.left=(fx*100)+"%";
+  tip.style.top =(sc.y(vy)/BG.H*100)+"%";
+  tip.style.display="block";
+  const box=tip.parentElement.getBoundingClientRect(), w=tip.offsetWidth, px=fx*box.width;
+  const shift=Math.max(0, w/2-px) - Math.max(0, px+w/2-box.width);
+  tip.style.transform=`translate(calc(-50% + ${shift.toFixed(0)}px),-118%)`;
+  tip.style.setProperty("--ax", `calc(50% - ${shift.toFixed(0)}px)`);
+}
+
+/* ---------- downloads (shared plumbing in assets/dashboard.js) ---------- */
+function exportName(ext){
+  const parts=[CURRENT.isNational?"England":humanName(CURRENT.name), measureMeta(MEASURE).title];
+  if(usesDept(MEASURE) && DEPT==="t1") parts.push("Type 1");
+  if(MEASURE==="dta") parts.push(DTATH+"h");
+  return parts.join("-").replace(/[^A-Za-z0-9]+/g,"-").replace(/^-+|-+$/g,"")+"."+ext;
+}
+function csvFilter(){ return MEASURE==="dta" ? `Over ${DTATH} hours from decision to admit` : DEPT_NAME[DEPT]; }
+function buildExportSVG(){
+  const chartSvg=document.querySelector("#chartbox svg"); if(!chartSvg) return null;
+  const {W,H}=BG, headerH=EXPORT_HEADER_H;
+  const serif=`font-family="'IBM Plex Sans','Helvetica Neue',Arial,sans-serif"`;
+  const head=
+    `<text x="16" y="26" font-size="18" font-weight="600" fill="var(--ink)" ${serif}>${xmlEsc(document.getElementById("bigttl").textContent)}</text>`+
+    `<text x="16" y="46" font-size="12.5" fill="var(--ink-soft)" ${serif}>${xmlEsc(CURRENT.isNational?"England":humanName(CURRENT.name))}</text>`;
+  return resolvePalette(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H+headerH}" viewBox="0 0 ${W} ${H+headerH}" font-family="ui-monospace,Menlo,monospace">`+
+    `<rect width="${W}" height="${H+headerH}" fill="var(--panel)"/>`+head+
+    `<g transform="translate(0,${headerH})">${chartSvg.innerHTML}</g></svg>`);
+}
+
+init();
+</script>
+</body>
+</html>
