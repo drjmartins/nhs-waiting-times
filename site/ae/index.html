@@ -10,7 +10,6 @@
   /* A&E-only: the explanation of the selected measure, between the cards and the chart. */
   .measurenote{margin:-6px 0 22px;border-left-color:var(--accent);color:var(--ink)}
   .measurenote b{font-weight:600}
-  .measurenote .more{color:var(--ink-soft)}
   .note ul{margin:4px 0 0;padding-left:18px}
   .note li{margin:2px 0}
 </style>
@@ -182,9 +181,13 @@ function footerHTML(M){
   const latest=fullMonth(M.months[M.months.length-1]), built=isoDate(M.built_at);
   return `Data source: <a href="https://www.england.nhs.uk/statistics/statistical-work-areas/ae-waiting-times-and-activity/" target="_blank" rel="noopener">NHS England A&amp;E Attendances and Emergency Admissions statistics</a>, published monthly and used here under the Open Government Licence v3.0. This dashboard is an independent tool and is not affiliated with or endorsed by NHS England.<br><br>`+
     `Data to ${latest}. Last updated ${built}. Every month's England figures match NHS England's published A&amp;E time series exactly.<br><br>`+
+    `<b>About the measures.</b> <b>% within 4 hours</b> counts attendances, including booked appointments, where the patient was admitted, transferred or discharged within 4 hours of arrival, as NHS England calculates it. `+
+    `<b>All types</b> covers major emergency departments (Type 1), single-specialty units such as eye hospitals (Type 2), and urgent treatment centres, minor injury units and walk-in centres (Type 3); <b>Type 1</b> shows major emergency departments only, where waits are longest. `+
+    `<b>Attendances</b> include booked appointments (counted from August 2020); one person can attend more than once. `+
+    `<b>Waits for admission</b> run from the decision to admit to admission, not from arrival, so the whole time spent in A&amp;E is longer; NHS England's measure of 12 hours from arrival comes from a different collection and is not shown here.<br><br>`+
     `Provider figures are as each organisation reports them. NHS England also publishes trust figures that include Type 3 activity run by other organisations nearby; those are not shown here. `+
     `ICB figures add up the providers in each ICB, using NHS England's mapping of providers to ICBs for that financial year; they describe services in the ICB's area, not only its residents. ICBs began in July 2022, so ICB figures start in April 2022 (the first year of NHS England's mapping); England and provider figures start in April 2018.<br><br>`+
-    `Providers with very little recent activity (no month reaching 100 attendances in the past year) are hidden.`;
+    `Providers that never reached 100 attendances in a month are hidden. Providers that have stopped reporting (usually after a merger) are listed separately in the organisation list.`;
 }
 
 async function init(){
@@ -396,21 +399,16 @@ function syncControls(){
 }
 
 /* ---------- what the measure means (banner above the cards) ---------- */
-function msText(){ return (META.milestones||[]).map(m=>`${Math.round(m.target*100)}% by ${tipMonth(m.by)}`).join(", "); }
+function msText(){ return (META.milestones||[]).map(m=>`${Math.round(m.target*100)}% by ${tipMonth(m.by)}`).join(", ").replace(/, ([^,]*)$/," and $1"); }
 function renderMeasureNote(){
-  const box=document.getElementById("measurenote");
-  const types = `<span class="more"><b>All types</b> counts every kind of A&amp;E: major emergency departments (Type 1), `+
-    `single-specialty units such as eye hospitals (Type 2), and urgent treatment centres, minor injury units and walk-in centres (Type 3). `+
-    `<b>Type 1</b> shows major emergency departments only, where waits are longest.</span>`;
+  // One short line per measure; definitions and technical notes are in the footer.
   const txt={
-    pct4: `<b>% within 4 hours</b> is the share of A&amp;E attendances where the patient was admitted, transferred or discharged `+
-      `within 4 hours of arriving. The NHS Constitution standard is ${targetPct()}; NHS England's planning aims are ${msText()}. `+types,
-    attend: `<b>Attendances</b> are visits to A&amp;E in the month, including booked appointments. One person can attend more than once. `+types,
-    dta: `<b>Waits for admission</b> are patients who waited more than ${DTATH} hours between the decision to admit them and getting a bed, `+
-      `often called trolley waits. This clock starts at the decision to admit, not at arrival, so the whole time spent in A&amp;E is longer. `+
-      `<span class="more">NHS England's measure of 12 hours from arrival comes from a different collection and is not shown here.</span>`,
+    pct4: `<b>% within 4 hours:</b> how many A&amp;E patients were admitted, transferred or discharged within 4 hours of arriving. `+
+      `The standard is ${targetPct()}; NHS England's aims are ${msText()}.`,
+    attend: `<b>Attendances:</b> the number of visits to A&amp;E in the month.`,
+    dta: `<b>Waits for admission:</b> patients who waited more than ${DTATH} hours for a bed after the decision to admit them, often called trolley waits.`,
   };
-  box.innerHTML=txt[MEASURE];
+  document.getElementById("measurenote").innerHTML=txt[MEASURE];
 }
 // Dated caveats from NHS England's notes, shown under the chart when they fall in the visible months.
 function renderDataNotes(months){
