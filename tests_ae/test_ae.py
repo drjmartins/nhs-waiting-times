@@ -28,7 +28,7 @@ def write_csv(path, period, rows, total_code="TOTAL", total_override=None):
         lines.append(",".join([period, code, parent, nm] + [str(r[k]) for k in config.COLS]))
     tot.update(total_override or {})
     lines.append(",".join([total_code] * 4 + [str(tot[k]) for k in config.COLS]))
-    with open(path, "w", encoding="utf-8") as f:
+    with open(path, "w", encoding="utf-8", newline="") as f:
         f.write("﻿" + "\r\n".join(lines) + "\r\n")
 
 
