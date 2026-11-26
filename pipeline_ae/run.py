@@ -44,7 +44,8 @@ def fetch_all():
         manifest.setdefault("months", {})[month] = todo[month]
 
     maps = {fy: u for fy, u in ((fy, discover.discover_mapping(h)) for fy, h in pages.items()) if u}
-    missing = [fy for fy in fys if fy in pages and fy not in maps]
+    # System Mapping Files exist from 2022-23 (ICBs began July 2022); earlier pages have none.
+    missing = [fy for fy in fys if fy in pages and fy >= config.FIRST_ICB_FY and fy not in maps]
     if missing:
         raise RuntimeError(f"no System Mapping File link on the {missing} page(s) — refusing to build")
     for fy, url in sorted(maps.items()):

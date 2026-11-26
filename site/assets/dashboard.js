@@ -159,6 +159,7 @@ function orgListFor(type){
 // name-based NHS-Trust/Independent grouping inside the list.)
 function orgGroupOf(o){
   if(o.former) return "Former organisations";   // closed/superseded per ODS — own group, still selectable
+  if(o.stopped) return "Stopped reporting";      // A&E: figures end early (merged/closed, not flagged by ODS)
   const u=(o.name||"").toUpperCase();
   if(o.level==="icb") return u.includes("INTEGRATED CARE BOARD") ? "ICB" : "Other";
   return "Current";
@@ -173,10 +174,10 @@ function buildOrgOptions(q){
   // Former orgs stay SELECTABLE — their history is still viewable after a merger.
   const groups = CURRENT_TYPE==="icb"
     ? [["ICB","ICB"],["Other","Other"],["Former organisations","Former organisations"]]
-    : [["Current",null],["Former organisations","Former organisations"]];
+    : [["Current",null],["Former organisations","Former organisations"],["Stopped reporting","Stopped reporting"]];
   let first=true;
   for(const [key,label] of groups){
-    const items = key==="Current" ? list.filter(o=>!o.former) : list.filter(o=>orgGroupOf(o)===key);
+    const items = key==="Current" ? list.filter(o=>!o.former && !o.stopped) : list.filter(o=>orgGroupOf(o)===key);
     if(!items.length) continue;
     if(label){ const h=document.createElement("div"); h.className="fgroup"+(first?" first":""); h.textContent=label; host.appendChild(h); }
     first=false;

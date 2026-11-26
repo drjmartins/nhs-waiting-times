@@ -6,6 +6,22 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
+## 2026-11-26: A&E history back to April 2018; 4-hour % now excludes CRS field-test trusts; measure banner (Claude session; user request)
+- **Bug caught before launch:** from May 2019 to May 2023, 14 trusts in the Clinical Review of Standards (CRS) field
+  test reported no 4-hour breaches. NHS England leaves their attendances out of every 4-hour %; the first build did not,
+  overstating England by ~3 points for Apr 2022 - May 2023 (75.2% vs the published 72.2% in Apr 2022). Fixed with
+  `config.CRS_TRUSTS` (RD3 became R0D in Oct 2020); the time-series gate now also checks NHS England's published 4-hour
+  denominators, and a listed trust reporting a breach fails the build. Their own % shows as a shaded gap.
+- **History:** April 2018 onwards (103 months), all matching NHS England's time series exactly on every measure. Earlier
+  years exist only as Excel workbooks (2015-18) or England-level series (from 2010); not added. Three CSV formats are read
+  (old column names to March 2020; no booked-appointment columns April-July 2020; total row with blank codes in 2019-20).
+- **ICBs start April 2022** (ICBs began July 2022; the first System Mapping File is 2022-23). England and providers start 2018.
+- **Picker:** with the longer history, providers are hidden only if no month ever reached 100 attendances; providers whose
+  figures end more than 2 months before the latest month are listed under "Stopped reporting" with a note.
+- **Measure banner** above the cards explains the selected measure (definition, standard and aims, A&E types); dated caveats
+  (CRS, booked appointments from Aug 2020, Type 3 cyber-attack shortfall Aug 2022 - Feb 2023, COVID-19) show under the
+  chart when those months are in view.
+
 ## 2026-11-25: A&E dashboard (`/ae/`) and shared dashboard code: BUILT, NOT YET DEPLOYED (Claude session; user request)
 - **Shared code.** The JS and CSS common to Cancer and RTT moved to `site/assets/dashboard.js` and
   `site/assets/dashboard.css` (org picker, org note, expand modal, downloads, number/month formatting,

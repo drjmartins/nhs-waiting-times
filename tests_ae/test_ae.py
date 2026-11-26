@@ -137,7 +137,7 @@ def test_financial_years():
     import datetime as dt
     assert discover.financial_years(dt.date(2026, 3, 31))[-1] == "2025-26"
     assert discover.financial_years(dt.date(2026, 4, 1))[-1] == "2026-27"
-    assert discover.financial_years(dt.date(2026, 4, 1))[0] == "2022-23"
+    assert discover.financial_years(dt.date(2026, 4, 1))[0] == "2018-19"
 
 
 def test_select_to_fetch(tmp_path):
@@ -248,3 +248,85 @@ def test_time_series_must_include_latest_month(dataset, monkeypatch):
     with pytest.raises(AssertionError, match="stale workbook"):
         build.run(raw_dir=str(raw_dir), mapping_dir=str(map_dir), out_dir=str(out),
                   classification={}, trust_codes={"RAA"}, time_series_path=str(ts))
+
+
+# ---------------------------------------------------------------- older formats (2018-2021)
+
+OLD_HEADER = ["Period", "Org Code", "Parent Org", "Org name",
+              "Number of A&E attendances Type 1", "Number of A&E attendances Type 2",
+              "Number of A&E attendances Other A&E Department", "Number of attendances over 4hrs Type 1",
+              "Number of attendances over 4hrs Type 2", "Number of attendances over 4hrs Other A&E Department",
+              "Patients who have waited 4-12 hs from DTA to admission", "Patients who have waited 12+ hrs from DTA to admission",
+              "Emergency admissions via A&E - Type 1", "Emergency admissions via A&E - Type 2",
+              "Emergency admissions via A&E - Other A&E department", "Other emergency admissions"]
+
+
+def test_read_month_2019_format_without_booked_columns_and_blank_code_total(tmp_path):
+    p = tmp_path / "m.csv"
+    p.write_text(",".join(OLD_HEADER) + "\n"
+                 "MSitAE-MAY-2019,RBD,NHS ENGLAND SOUTH WEST (SOUTH WEST SOUTH),DORSET COUNTY,10,0,5,3,0,1,2,1,4,0,0,1\n"
+                 ",,,Total,10,0,5,3,0,1,2,1,4,0,0,1\n")
+    month, rows, total = build.read_month(p)
+    assert month == "2019-05" and len(rows) == 1
+    assert rows[0]["region"] == "South West"
+    assert rows[0]["raw"]["att_t1"] == 10 and rows[0]["raw"]["batt_t1"] == 0
+    assert rows[0]["raw"]["o4_t3"] == 1
+    build.check_total_row(month, rows, total)
+
+
+def test_discover_months_accepts_link_text_without_ae():
+    html = '<a href="/x/July-2021-revised-120522-CBA304.csv">Monthly July 2021 (Revised 120522) (CSV, 30K)</a>'
+    assert list(discover.discover_months([html])) == ["2021-07"]
+
+
+def test_crs_trusts_left_out_of_four_hour_denominator():
+    m = build.metrics(raw(att_t1=100, att_t3=20), crs=True)
+    assert m["att"] == 120 and m["patt"] == 0 and m["patt_t1"] == 0 and m["crs_att"] == 120
+    assert build.in_crs("RGT", "2019-05") and build.in_crs("RGT", "2023-05")
+    assert not build.in_crs("RGT", "2023-06") and not build.in_crs("RAA", "2020-01")
+
+
+def test_crs_end_to_end(tmp_path, monkeypatch):
+    raw_dir, map_dir, out = tmp_path / "raw", tmp_path / "map", tmp_path / "out"
+    raw_dir.mkdir(); map_dir.mkdir()
+    # 2021-06: before ICB mapping; RGT is in the field test and reports no breaches.
+    write_csv(raw_dir / "2021-06.csv", "MSitAE-JUNE-2021", [
+        ("RAA", "NHS ENGLAND LONDON", "A TRUST", raw(att_t1=100, o4_t1=30)),
+        ("RGT", "NHS ENGLAND EAST OF ENGLAND", "CAMBRIDGE", raw(att_t1=50)),
+    ])
+    write_csv(raw_dir / "2023-06.csv", "MSitAE-JUNE-2023", [
+        ("RAA", "NHS ENGLAND LONDON", "A TRUST", raw(att_t1=100, o4_t1=20)),
+        ("RGT", "NHS ENGLAND EAST OF ENGLAND", "CAMBRIDGE", raw(att_t1=50, o4_t1=10)),
+    ])
+    write_mapping(map_dir / "2023-24.xlsx", [("RAA", "QA"), ("RGT", "QB")] + [(f"P{i}", "QX") for i in range(60)])
+    # time series: in 2021-06 NHS England's 4-hour denominator leaves out RGT's 50 attendances
+    ts = tmp_path / "ts.xlsx"
+    write_time_series(ts, {"2021-06": (150, 150, 30, 30, 0, 0), "2023-06": (150, 150, 30, 30, 0, 0)})
+    import pandas as pd
+    perf = pd.read_excel(ts, sheet_name="Performance", header=None)
+    act = pd.read_excel(ts, sheet_name="Activity", header=None)
+    perf.iloc[14, 2] = 70; perf.iloc[14, 5] = 70          # 2021-06: <4 h = 100 - 30 (RGT excluded)
+    with pd.ExcelWriter(ts) as xw:
+        act.to_excel(xw, sheet_name="Activity", header=False, index=False)
+        perf.to_excel(xw, sheet_name="Performance", header=False, index=False)
+    meta = build.run(raw_dir=str(raw_dir), mapping_dir=str(map_dir), out_dir=str(out),
+                     classification={}, trust_codes={"RAA"}, time_series_path=str(ts))
+    assert meta["icb_from"] == "2023-04"
+    nat = json.load(open(out / "national.json"))
+    assert nat["measures"]["pct4"]["all"]["performance"] == [0.7, 0.8]
+    assert nat["measures"]["pct4"]["data_status"] == ["excl_crs", "final"]
+    assert nat["measures"]["attend"]["all"] == [150, 150]
+    rgt = json.load(open(out / "org" / "RGT.json"))
+    assert rgt["measures"]["pct4"]["all"]["performance"] == [None, 0.8]
+    assert rgt["measures"]["pct4"]["data_status"] == ["crs", "final"]
+    assert json.load(open(out / "org" / "QB.json"))["months"] == ["2023-06"]   # no ICB before mapping
+
+
+def test_crs_trust_reporting_breaches_fails_loud(tmp_path):
+    raw_dir, map_dir = tmp_path / "raw", tmp_path / "map"
+    raw_dir.mkdir(); map_dir.mkdir()
+    write_csv(raw_dir / "2021-06.csv", "MSitAE-JUNE-2021", [("RGT", "X", "CAMBRIDGE", raw(att_t1=50, o4_t1=1))])
+    write_mapping(map_dir / "2023-24.xlsx", [(f"P{i}", "QX") for i in range(60)])
+    with pytest.raises(AssertionError, match="CRS GATE"):
+        build.run(raw_dir=str(raw_dir), mapping_dir=str(map_dir), out_dir=str(tmp_path / "o"),
+                  classification={}, trust_codes=set(), time_series_path=None)

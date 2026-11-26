@@ -6,6 +6,14 @@
 <title>NHS A&amp;E Waiting Times Dashboard</title>
 <link rel="stylesheet" href="../assets/sdpl.css?v=1">
 <link rel="stylesheet" href="../assets/dashboard.css?v=1">
+<style>
+  /* A&E-only: the measure explanation banner sits above the cards. */
+  .measurenote{margin:4px 0 16px;border-left-color:var(--accent);color:var(--ink)}
+  .measurenote b{font-weight:600}
+  .measurenote .more{color:var(--ink-soft)}
+  .note ul{margin:4px 0 0;padding-left:18px}
+  .note li{margin:2px 0}
+</style>
 <!-- Visitor counts: GoatCounter (cookieless, no personal data). Stats: https://sdpl-waitingtimes.goatcounter.com -->
 <script data-goatcounter="https://sdpl-waitingtimes.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </head>
@@ -60,6 +68,9 @@
 
   <!-- Contextual org-lifecycle note: shown when a former / newly-formed org is selected. -->
   <div class="orgnote" id="orgnote" hidden></div>
+
+  <!-- What the selected measure means (A&E measures are less self-explanatory than RTT's or cancer's). -->
+  <div class="orgnote measurenote" id="measurenote" role="note"></div>
 
   <!-- Three summary cards = the MEASURE switcher (% within 4 hours / attendances / waits for admission) -->
   <div class="cards" id="cards"></div>
@@ -171,11 +182,8 @@ function footerHTML(M){
   const latest=fullMonth(M.months[M.months.length-1]), built=isoDate(M.built_at);
   return `Data source: <a href="https://www.england.nhs.uk/statistics/statistical-work-areas/ae-waiting-times-and-activity/" target="_blank" rel="noopener">NHS England A&amp;E Attendances and Emergency Admissions statistics</a>, published monthly and used here under the Open Government Licence v3.0. This dashboard is an independent tool and is not affiliated with or endorsed by NHS England.<br><br>`+
     `Data to ${latest}. Last updated ${built}. Every month's England figures match NHS England's published A&amp;E time series exactly.<br><br>`+
-    `<b>% within 4 hours</b> is the share of attendances where the patient was admitted, transferred or discharged within 4 hours of arrival, including booked appointments, as NHS England calculates it. `+
-    `<b>All types</b> covers major emergency departments (Type 1), single-specialty departments such as eye hospitals (Type 2) and urgent treatment centres, minor injury units and walk-in centres (Type 3). `+
-    `<b>Waits for admission</b> are patients who waited more than 4 or 12 hours from the decision to admit them to their admission (sometimes called trolley waits); this is not the time from arrival.<br><br>`+
     `Provider figures are as each organisation reports them. NHS England also publishes trust figures that include Type 3 activity run by other organisations nearby; those are not shown here. `+
-    `ICB figures add up the providers in each ICB, using NHS England's mapping of providers to ICBs for that financial year; they describe services in the ICB's area, not only its residents.<br><br>`+
+    `ICB figures add up the providers in each ICB, using NHS England's mapping of providers to ICBs for that financial year; they describe services in the ICB's area, not only its residents. ICBs began in July 2022, so ICB figures start in April 2022 (the first year of NHS England's mapping); England and provider figures start in April 2018.<br><br>`+
     `Providers with very little recent activity (no month reaching 100 attendances in the past year) are hidden.`;
 }
 
@@ -187,8 +195,6 @@ async function init(){
   NATIONAL = await (await fetch(durl("national.json"))).json();
   const idx = await (await fetch(durl("index.json"))).json();
   window._idx = idx;
-  document.getElementById("breaknote").innerHTML =
-    "&#9888; NHS England's 12-hour measure from arrival (published separately from Emergency Care Data Set records) is not shown here.";
 
   document.querySelectorAll("#typebtns .typebtn").forEach(b=>b.addEventListener("click",()=>setType(b.dataset.type)));
   document.querySelectorAll("#ptypebtns .ptypebtn").forEach(b=>b.addEventListener("click",()=>setPtype(b.dataset.ptype)));
@@ -229,6 +235,12 @@ async function init(){
   }
 }
 
+// Organisation note hook (assets/dashboard.js): providers whose figures end early.
+function submissionNoteHTML(){
+  const e=CURRENT && (window._idx||[]).find(o=>o.code===CURRENT.code);
+  return e && e.stopped ? `<b>Stopped reporting.</b> No A&amp;E figures after ${fullMonth(e.stopped)}; the organisation may have merged or closed. Its earlier figures remain viewable here.` : "";
+}
+
 function render(){
   // Byline beside the dropdown: NHS region only (the org name is already in the dropdown).
   document.getElementById("orgname").textContent = CURRENT.isNational
@@ -251,8 +263,22 @@ const pick = (arr, months, at) => months.map(m => m in at ? arr[at[m]] : null);
 function rateSeries(src, dept){
   const {months, at}=padMonths(src), d=src.measures.pct4[dept];
   return {months, performance:pick(d.performance,months,at), within_target:pick(d.within_target,months,at),
-    total:pick(d.total,months,at), target:META.standard_target};
+    total:pick(d.total,months,at), status:pick(src.measures.pct4.data_status,months,at), target:META.standard_target};
 }
+// Shaded band (with a label) over each run of months a CRS field-test trust reported no 4-hour data.
+function crsBandsSVG(s, x){
+  const {H,P}=BG, n=s.months.length; let out="", i=0;
+  while(i<n){
+    if(s.status[i]!=="crs"){ i++; continue; }
+    let j=i; while(j+1<n && s.status[j+1]==="crs") j++;
+    const x0=i>0 ? x(i-1) : P.l, x1=j<n-1 ? x(j+1) : BG.W-P.r, cx=(x0+x1)/2;
+    out+=`<rect x="${x0.toFixed(1)}" y="${P.t}" width="${(x1-x0).toFixed(1)}" height="${H-P.t-P.b}" fill="var(--grid)"/>`+
+      `<text x="${cx.toFixed(1)}" y="${P.t+12}" font-size="9.5" text-anchor="middle" fill="var(--ink-soft)">no 4-hour data: testing new standards</text>`;
+    i=j+1;
+  }
+  return out;
+}
+const STATUS_TEXT={crs:"Not reported (trust testing new standards)", excl_crs:"Excludes 14 trusts testing new standards"};
 function countSeries(src, measure, dept, th){
   const {months, at}=padMonths(src);
   if(measure==="attend"){
@@ -287,7 +313,9 @@ function renderCards(){
         const cur=s.performance[last], meets=cur>=s.target;
         // Against the 95% standard, and the current planning milestone where one applies.
         const ms=currentMilestone(s.months[last]);
-        const msTxt = ms && !meets ? ` &middot; aim ${xmlEsc(ms.label)}` : "";
+        // Only while that aim is current (within two years), not for a trust that stopped reporting years ago.
+        const soon = ms && (+ms.by.slice(0,4)*12 + +ms.by.slice(5)) - (+s.months[last].slice(0,4)*12 + +s.months[last].slice(5)) <= 24;
+        const msTxt = ms && soon && !meets ? ` &middot; aim ${xmlEsc(ms.label)}` : "";
         body=`<div class="figure"><b>${fmtPct(cur)}</b>
             <span class="vs ${meets?'meets':'under'}">${meets?'&#10003; meets':'&#9660; below'} ${targetPct()} standard</span></div>
           <div class="spark">${sparkLine(s.performance.map(v=>v), s.target, fmtPct)}</div>
@@ -367,14 +395,55 @@ function syncControls(){
   document.getElementById("mschk").checked = SHOW_MILESTONES;
 }
 
+/* ---------- what the measure means (banner above the cards) ---------- */
+function msText(){ return (META.milestones||[]).map(m=>`${Math.round(m.target*100)}% by ${tipMonth(m.by)}`).join(", "); }
+function renderMeasureNote(){
+  const box=document.getElementById("measurenote");
+  const types = `<span class="more"><b>All types</b> counts every kind of A&amp;E: major emergency departments (Type 1), `+
+    `single-specialty units such as eye hospitals (Type 2), and urgent treatment centres, minor injury units and walk-in centres (Type 3). `+
+    `<b>Type 1</b> shows major emergency departments only, where waits are longest.</span>`;
+  const txt={
+    pct4: `<b>% within 4 hours</b> is the share of A&amp;E attendances where the patient was admitted, transferred or discharged `+
+      `within 4 hours of arriving. The NHS Constitution standard is ${targetPct()}; NHS England's planning aims are ${msText()}. `+types,
+    attend: `<b>Attendances</b> are visits to A&amp;E in the month, including booked appointments. One person can attend more than once. `+types,
+    dta: `<b>Waits for admission</b> are patients who waited more than ${DTATH} hours between the decision to admit them and getting a bed, `+
+      `often called trolley waits. This clock starts at the decision to admit, not at arrival, so the whole time spent in A&amp;E is longer. `+
+      `<span class="more">NHS England's measure of 12 hours from arrival comes from a different collection and is not shown here.</span>`,
+  };
+  box.innerHTML=txt[MEASURE];
+}
+// Dated caveats from NHS England's notes, shown under the chart when they fall in the visible months.
+function renderDataNotes(months){
+  const box=document.getElementById("breaknote"), first=months[0], last=months[months.length-1];
+  const inView=(a,b)=> !(b<first || a>last);
+  const crs=META.crs||{}, notes=[];
+  const isCrsTrust = CURRENT.level==="provider" && (crs.trusts||[]).includes(CURRENT.code);
+  if(MEASURE==="pct4" && crs.from && inView(crs.from, crs.to)){
+    notes.push(isCrsTrust
+      ? `From ${tipMonth(crs.from)} to ${tipMonth(crs.to)} this trust was one of 14 testing new A&amp;E standards and did not report 4-hour performance; those months are shaded.`
+      : `From ${tipMonth(crs.from)} to ${tipMonth(crs.to)}, 14 trusts testing new A&amp;E standards did not report 4-hour performance. NHS England leaves them out of England's percentage in those months, and so does this dashboard (and ICBs').`);
+  }
+  if(MEASURE==="attend" && inView("2020-08","2020-08"))
+    notes.push(`Booked appointments are counted from August 2020, which adds slightly to attendances from then on.`);
+  if(MEASURE==="attend" && inView("2022-08","2023-02"))
+    notes.push(`From August 2022 to February 2023 a cyber-attack on several urgent care providers means Type 3 attendances are under-counted.`);
+  if(inView("2020-03","2021-03"))
+    notes.push(`Attendances fell sharply during the COVID-19 pandemic (from March 2020), which also affects waiting times in those months.`);
+  box.hidden=!notes.length;
+  box.innerHTML = notes.length ? "&#9888; "+(notes.length>1 ? `<b>Notes on these figures</b><ul>${notes.map(n=>`<li>${n}</li>`).join("")}</ul>` : notes[0]) : "";
+}
+
 /* ---------- big chart ---------- */
 const BG={W:920,H:380,P:{l:54,r:96,t:36,b:30}};
 const LBL_GAP=6;
 function renderBig(){
   syncControls();
+  renderMeasureNote();
   document.getElementById("bigtag").textContent = CURRENT.isNational ? "England" : CURRENT.name;
   CSV_DATA=null;
   if(measureMeta(MEASURE).kind==="rate") renderRate(); else renderCount();
+  const ms=CURRENT.months.length ? CURRENT.months : NATIONAL.months;
+  renderDataNotes(ms.filter(m=>m>=firstVisibleMonth(ms)));
 }
 function emptyChart(title, msg){
   document.getElementById("bigttl").textContent = title;
@@ -395,12 +464,13 @@ function renderRate(){
   const minMonth=firstVisibleMonth(full.months);
   const s=clipObj(full, minMonth);
   if(lastIdx(s.performance)<0){ ACTIVE_NAT=null;
-    emptyChart(title, "No attendances were reported in the selected period. Choose All to see earlier months."); return; }
+    emptyChart(title, s.status.some(x=>x==="crs") ? "This trust did not report 4-hour performance in the selected period (it was testing new standards). Choose All to see other months."
+      : "No attendances were reported in the selected period. Choose All to see earlier months."); return; }
   let nat=null;
   if(SHOW_ENGLAND && !CURRENT.isNational) nat=clipObj(rateSeries(NATIONAL, DEPT), minMonth);
   ACTIVE_NAT=nat;
   const showMs = SHOW_MILESTONES && milestonesApply();
-  const hasLow = s.total.some(v=>v!=null && (+v)<THRESH);
+  const hasLow = s.total.some((v,i)=>s.performance[i]!=null && (+v)<THRESH);
   const item=(sw,mk,sq,label)=>`<span class="lgitem">${legendSwatch(sw,mk,sq)}${label}</span>`;
   const sep=`<span class="lgsep">&middot;</span>`;
   const parts=[item(`stroke="var(--org)" stroke-width="2.4"`,`fill="var(--org)"`,false,orgLabel())];
@@ -474,7 +544,7 @@ function rateSVG(s,nat,showMs){
   const aria=rateSummary(s,nat);
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${escAttr(aria)}">`+
     `<title>${xmlEsc(document.getElementById("bigttl").textContent)}</title><desc>${xmlEsc(aria)}</desc>`+
-    `${g}${natpath}${lines}${line}${xAxisSVG(xs,x)}${pts}</svg>`;
+    `${g}${crsBandsSVG(s,x)}${natpath}${lines}${line}${xAxisSVG(xs,x)}${pts}</svg>`;
 }
 
 /* ----- counts (attendances / waits for admission): auto-scaling axis from 0 ----- */
@@ -536,7 +606,8 @@ function countSummary(s){
 function rateTableHTML(s,nat){
   const natBy={}; if(nat) nat.months.forEach((mo,j)=>natBy[mo]=nat.performance[j]);
   const title=document.getElementById("bigttl").textContent;
-  const status=i=> s.performance[i]==null ? "No data reported" : (+s.total[i])<THRESH ? `Low reliability (under ${THRESH} attendances)` : "Published";
+  const status=i=> STATUS_TEXT[s.status[i]] || (s.performance[i]==null ? "No data reported"
+    : (+s.total[i])<THRESH ? `Low reliability (under ${THRESH} attendances)` : "Published");
   let rows="";
   for(let i=0;i<s.months.length;i++){
     const nv=nat?`<td>${natBy[s.months[i]]!=null?fmtPct(natBy[s.months[i]]):"—"}</td>`:``;
@@ -574,7 +645,8 @@ function showTip(i, s, kind){
     if(s.performance[i]==null) return;
     sc=rateScales(s, ACTIVE_NAT, SHOW_MILESTONES && milestonesApply()); vy=s.performance[i];
     html=`${tipMonth(s.months[i])} &middot; <span class="pct">${fmtPct(s.performance[i])}</span><br>`+
-      `${commas(s.within_target[i])} of ${commas(s.total[i])} within 4 hours`;
+      `${commas(s.within_target[i])} of ${commas(s.total[i])} within 4 hours`+
+      (s.status[i]==="excl_crs" ? `<br>excludes 14 trusts testing new standards` : ``);
   } else {
     if(s.value[i]==null) return;
     sc=countScales(s); vy=+s.value[i];

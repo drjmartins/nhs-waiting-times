@@ -21,10 +21,11 @@ Data model (DECISIONS 2026-11-25):
 
 SOURCE_INDEX = "https://www.england.nhs.uk/statistics/statistical-work-areas/ae-waiting-times-and-activity/"
 SOURCE_FY_PAGE = SOURCE_INDEX + "ae-attendances-and-emergency-admissions-{fy}/"
-FIRST_FY_START = 2022            # April 2022 onwards, matching the RTT dashboard
+FIRST_FY_START = 2018            # April 2018 onwards: the first year NHS England published CSVs
+                                 # (earlier years are Excel workbooks only; DECISIONS 2026-11-26)
 
 # Link-text patterns (case-insensitive) on the FY pages / index page.
-MONTHLY_CSV_TEXT = r"^Monthly A&E\s+([A-Za-z]+)\s+(\d{4})\b.*\bCSV\b"
+MONTHLY_CSV_TEXT = r"^Monthly\s+(?:A&E\s+)?([A-Za-z]+)\s+(\d{4})\b.*\bCSV\b"   # July 2021 omits "A&E"
 SYSTEM_MAPPING_TEXT = r"System Mapping File"
 TIME_SERIES_TEXT = r"^Monthly A&E Time Series\b"
 
@@ -70,33 +71,62 @@ COLS = {
     "adm_t3": "Emergency admissions via A&E - Other A&E department",
     "adm_other": "Other emergency admissions",
 }
+# Older files name the same columns differently; each maps to the current name.
+#   April 2018 - March 2020: "Number of A&E attendances Type 1", "Number of attendances over 4hrs ..."
+#   April 2020 - July 2020: current names, but no booked-appointment columns (added August 2020;
+#   a file without them is read as zero booked appointments, as NHS England's time series does).
+COL_ALIASES = {
+    "Number of A&E attendances Type 1": "A&E attendances Type 1",
+    "Number of A&E attendances Type 2": "A&E attendances Type 2",
+    "Number of A&E attendances Other A&E Department": "A&E attendances Other A&E Department",
+    "Number of attendances over 4hrs Type 1": "Attendances over 4hrs Type 1",
+    "Number of attendances over 4hrs Type 2": "Attendances over 4hrs Type 2",
+    "Number of attendances over 4hrs Other A&E Department": "Attendances over 4hrs Other Department",
+}
+OPTIONAL_COLS = {"batt_t1", "batt_t2", "batt_t3", "bo4_t1", "bo4_t2", "bo4_t3"}
+
 ID_COLS = {"period": "Period", "code": "Org Code", "parent": "Parent Org", "name": "Org name"}
 
 # NHS region from the CSV's Parent Org ("NHS ENGLAND LONDON" -> "London").
+# Older files add a sub-region in brackets ("NHS ENGLAND SOUTH WEST (SOUTH WEST SOUTH)").
 REGIONS = {
     "LONDON": "London", "SOUTH EAST": "South East", "SOUTH WEST": "South West",
     "MIDLANDS": "Midlands", "EAST OF ENGLAND": "East of England",
     "NORTH WEST": "North West", "NORTH EAST AND YORKSHIRE": "North East and Yorkshire",
 }
 
+# --- Clinical Review of Standards (CRS) field test --------------------------------
+# From May 2019 to May 2023, 14 trusts tested new A&E standards and did not report 4-hour
+# performance (their over-4-hour columns are zero). NHS England counts their attendances but
+# leaves them out of every 4-hour percentage; so do we: in these months their attendances are
+# excluded from the % denominator and their own % is not shown. RD3 (Poole) became part of
+# R0D (University Hospitals Dorset) in October 2020. Gate 2 checks the result against NHS
+# England's published percentages, and the build fails if a listed trust reports a breach.
+CRS_FROM, CRS_TO = "2019-05", "2023-05"
+CRS_TRUSTS = {"RC9", "RD3", "R0D", "RDU", "RFR", "RGR", "RGT", "RHU", "RK9", "RNQ",
+              "RQM", "RVW", "RX1", "RXF", "RYJ"}
+
 # --- Reconciliation gates (fail-loud) ----------------------------------------------
 # 1. Every month: the provider rows must sum EXACTLY to the file's own TOTAL row.
 # 2. Every month in both: our England totals must EXACTLY equal NHS England's Monthly
-#    A&E Time Series (attendances, over-4-hour counts, all types and Type 1, and both
-#    decision-to-admit counts). The workbook is downloaded on every run.
-# 3. Every month: ICBs + providers with no ICB in the mapping must sum EXACTLY to
-#    England, and the unmapped share must stay below UNMAPPED_MAX_SHARE of attendances.
+#    A&E Time Series (attendances, the 4-hour denominators and over-4-hour counts, all
+#    types and Type 1, and both decision-to-admit counts). Downloaded on every run.
+# 3. Every month from the first System Mapping File (April 2022; ICBs began July 2022):
+#    ICBs + providers with no ICB in the mapping must sum EXACTLY to England, and the
+#    unmapped share must stay below UNMAPPED_MAX_SHARE of attendances. No ICB figures are
+#    made for earlier months.
 TIME_SERIES_PATH = "data_ae/raw/time_series.xls"
+FIRST_ICB_FY = "2022-23"         # first financial year with a System Mapping File
 UNMAPPED_MAX_SHARE = 0.01
 
 # Reliability threshold for the percentage (shared with cancer/RTT): a month whose
 # denominator is below this is low-reliability (flagged, not hidden).
 RELIABILITY_THRESHOLD = 10
 
-# Picker hiding: a provider whose largest monthly attendances over the last N months
-# stay below this is hidden from the picker (kept in the data, reachable by ?org=).
-PICKER_PROVIDER_WINDOW_MONTHS = 12
-PICKER_MIN_PROVIDER_ATTENDANCES = 100
+# Picker hiding: a provider whose largest monthly attendances never reach this is hidden
+# from the picker (kept in the data, reachable by ?org=).
+PICKER_MIN_PROVIDER_ATTENDANCES = 100     # in its busiest month: below this, hidden
+STOPPED_GAP_MONTHS = 2                    # no figures in the latest 3 months: "stopped reporting"
 YOUNG_WINDOW_MONTHS = 12
 
 # Where things live.
