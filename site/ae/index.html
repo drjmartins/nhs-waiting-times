@@ -425,7 +425,7 @@ function renderDataNotes(months){
   if(MEASURE==="pct4" && crs.from && inView(crs.from, crs.to)){
     notes.push(isCrsTrust
       ? `From ${tipMonth(crs.from)} to ${tipMonth(crs.to)} this trust was one of 14 testing new A&amp;E standards and did not report 4-hour performance; those months are shaded.`
-      : `From ${tipMonth(crs.from)} to ${tipMonth(crs.to)}, 14 trusts testing new A&amp;E standards did not report 4-hour performance. NHS England leaves them out of England's percentage in those months, and so does this dashboard (and ICBs').`);
+      : `From ${tipMonth(crs.from)} to ${tipMonth(crs.to)}, 14 trusts testing new A&amp;E standards did not report 4-hour performance. NHS England leaves them out of England's percentage in those months, and so does this dashboard.`);
   }
   if(MEASURE==="attend" && inView("2020-08","2020-08"))
     notes.push(`Booked appointments are counted from August 2020, which adds slightly to attendances from then on.`);
