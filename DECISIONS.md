@@ -8,8 +8,9 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ## 2026-11-26: One-line measure banners on all three dashboards; A&E wording aligned (Claude session; user request)
 - The A&E banner (between the cards and the chart) is now on Cancer and RTT too: one line on what the selected
-  measure means and its target. Shared style `.measurenote` in `dashboard.css`; each page has `renderMeasureNote()`.
-  Cancer gives the target in force (FDS: 80% from April 2026, 75% before); the target-change banner under the chart stays.
+  measure means. No targets or milestones in it (user decision): those are on the cards and the chart, and the
+  FDS target-change note under the chart stays. Shared style `.measurenote` in `dashboard.css`; each page has
+  `renderMeasureNote()`.
 - A&E aligned with the others: "Commissioners" (not "ICBs"), "target" (not "standard") for the 95% line and cards.
   "Other providers" kept rather than "Independent Sector": in A&E most non-trust providers are GP practices and urgent
   treatment centres, not independent-sector hospitals.

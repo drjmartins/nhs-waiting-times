@@ -407,12 +407,10 @@ function syncControls(){
 }
 
 /* ---------- what the measure means (banner above the cards) ---------- */
-function msText(){ return (META.milestones||[]).map(m=>`${Math.round(m.target*100)}% by ${tipMonth(m.by)}`).join(", ").replace(/, ([^,]*)$/," and $1"); }
 function renderMeasureNote(){
   // One short line per measure; definitions and technical notes are in the footer.
   const txt={
-    pct4: `<b>% within 4 hours:</b> how many A&amp;E patients were admitted, transferred or discharged within 4 hours of arriving. `+
-      `The target is ${targetPct()}; NHS England's planning milestones are ${msText()}.`,
+    pct4: `<b>% within 4 hours:</b> how many A&amp;E patients were admitted, transferred or discharged within 4 hours of arriving.`,
     attend: `<b>Attendances:</b> the number of visits to A&amp;E in the month.`,
     dta: `<b>Waits for admission:</b> patients who waited more than ${DTATH} hours for a bed after the decision to admit them, often called trolley waits.`,
   };

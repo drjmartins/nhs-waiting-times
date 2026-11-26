@@ -733,20 +733,15 @@ function renderModOptions(q){
 }
 
 /* ---- big chart ---- */
-// What the selected standard means: one line between the cards and the chart. The target is the
-// one in force for the latest month; a change of target is explained under the chart (targetnote).
+// What the selected standard means: one line between the cards and the chart. Targets are on the
+// cards and the chart (and a change of target is explained under the chart, targetnote).
 function renderMeasureNote(){
-  const s=NATIONAL && NATIONAL.standards && NATIONAL.standards[CURRENT_STD]; if(!s) return;
-  const sch=s.target_schedule;
-  const tgt = sch && sch.length>1
-    ? `The target is ${fmtTarget(sch[sch.length-1][1])} from ${fullMonth(sch[sch.length-1][0])} (${fmtTarget(sch[sch.length-2][1])} before).`
-    : `The target is ${fmtTarget(s.target)}.`;
   const txt={
     FDS28: `<b>28-day Faster Diagnosis Standard:</b> how many patients referred urgently for suspected cancer are told they have cancer, or that it has been ruled out, within 28 days. `,
     CMB31: `<b>31-day combined:</b> how many patients start cancer treatment within 31 days of the decision to treat, for first and later treatments. `,
     CMB62: `<b>62-day combined:</b> how many patients start their first cancer treatment within 62 days of an urgent referral, a screening referral or a consultant upgrade. `,
   };
-  document.getElementById("measurenote").innerHTML=(txt[CURRENT_STD]||"")+tgt;
+  document.getElementById("measurenote").innerHTML=(txt[CURRENT_STD]||"").trim();
 }
 function renderBig(){
   renderMeasureNote();

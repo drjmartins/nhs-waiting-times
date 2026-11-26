@@ -581,11 +581,8 @@ function syncControls(){
 
 /* ---------- what the measure means (one line, between the cards and the chart) ---------- */
 function renderMeasureNote(){
-  const ms=(META.recovery_milestones||[]).filter(m=>m.target<META.standard_target)
-    .map(m=>`${Math.round(m.target*100)}% by ${tipMonth(m.by)}`).join(" and ");
   const txt={
-    pct18: `<b>% within 18 weeks:</b> how many patients waiting to start consultant-led treatment have waited 18 weeks or less since referral. `+
-      `The target is ${targetPct()}`+(ms?`; NHS England's recovery milestones are ${ms}.`:`.`),
+    pct18: `<b>% within 18 weeks:</b> how many patients waiting to start consultant-led treatment have waited 18 weeks or less since referral.`,
     waitlist: `<b>Waiting-list size:</b> the number of patients waiting to start consultant-led treatment at the end of the month (counted as pathways).`,
     longwait: `<b>Long waiters:</b> patients who have waited more than ${LWTHRESH} weeks since referral to start treatment.`,
   };
