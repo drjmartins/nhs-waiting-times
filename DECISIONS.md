@@ -20,7 +20,8 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
   figures end more than 2 months before the latest month are listed under "Stopped reporting" with a note.
 - **Measure banner** between the cards and the chart gives a one-line overview of the selected measure (standard and aims); definitions and technical notes are in the footer; dated caveats
   (CRS, booked appointments from Aug 2020, Type 3 cyber-attack shortfall Aug 2022 - Feb 2023, COVID-19) show under the
-  chart when those months are in view.
+  chart when those months are in view. A dashed "COVID-19 (Mar 2020)" marker (styled like RTT's Feb 2024 break) shows on
+  every A&E chart that includes March 2020.
 
 ## 2026-11-25: A&E dashboard (`/ae/`) and shared dashboard code: BUILT, NOT YET DEPLOYED (Claude session; user request)
 - **Shared code.** The JS and CSS common to Cancer and RTT moved to `site/assets/dashboard.js` and

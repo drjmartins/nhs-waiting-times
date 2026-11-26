@@ -276,10 +276,21 @@ function crsBandsSVG(s, x){
     let j=i; while(j+1<n && s.status[j+1]==="crs") j++;
     const x0=i>0 ? x(i-1) : P.l, x1=j<n-1 ? x(j+1) : BG.W-P.r, cx=(x0+x1)/2;
     out+=`<rect x="${x0.toFixed(1)}" y="${P.t}" width="${(x1-x0).toFixed(1)}" height="${H-P.t-P.b}" fill="var(--grid)"/>`+
-      `<text x="${cx.toFixed(1)}" y="${P.t+12}" font-size="9.5" text-anchor="middle" fill="var(--ink-soft)">no 4-hour data: testing new standards</text>`;
+      // Label at the band's foot, right-aligned (centred, it could sit under the COVID-19 marker line).
+      (x1-x0>230 ? `<text x="${(x1-6).toFixed(1)}" y="${H-P.b-8}" font-size="9.5" text-anchor="end" fill="var(--ink-soft)">no 4-hour data: testing new standards</text>`
+                 : `<text x="${cx.toFixed(1)}" y="${H-P.b-8}" font-size="9.5" text-anchor="middle" fill="var(--ink-soft)">no 4-hour data</text>`);
     i=j+1;
   }
   return out;
+}
+// Dashed marker for the start of the COVID-19 pandemic (March 2020), drawn like RTT's series-break
+// marker when that month is in view; the note under the chart says more.
+const COVID_MONTH="2020-03";
+function covidMarkerSVG(xs, x){
+  const mi=xs.indexOf(COVID_MONTH); if(mi<=0) return "";
+  const {P,H,W}=BG, mx=+x(mi).toFixed(1), lx=Math.max(P.l+50, Math.min(W-P.r-50, mx));
+  return `<line x1="${mx}" y1="${(P.t-18).toFixed(1)}" x2="${mx}" y2="${(H-P.b).toFixed(1)}" stroke="var(--ink-soft)" stroke-dasharray="4 3" stroke-width="1" opacity="0.7"/>`+
+    `<text x="${lx.toFixed(1)}" y="${P.t-22}" font-size="9.5" text-anchor="middle" fill="var(--ink-soft)">COVID-19 (Mar 2020)</text>`;
 }
 const STATUS_TEXT={crs:"Not reported (trust testing new standards)", excl_crs:"Excludes 14 trusts testing new standards"};
 function countSeries(src, measure, dept, th){
@@ -426,7 +437,7 @@ function renderDataNotes(months){
   if(MEASURE==="attend" && inView("2022-08","2023-02"))
     notes.push(`From August 2022 to February 2023 a cyber-attack on several urgent care providers means Type 3 attendances are under-counted.`);
   if(inView("2020-03","2021-03"))
-    notes.push(`Attendances fell sharply during the COVID-19 pandemic (from March 2020), which also affects waiting times in those months.`);
+    notes.push(`The dashed line marks the start of the COVID-19 pandemic in March 2020: attendances fell sharply, which also affects waiting times in the following months.`);
   box.hidden=!notes.length;
   box.innerHTML = notes.length ? "&#9888; "+(notes.length>1 ? `<b>Notes on these figures</b><ul>${notes.map(n=>`<li>${n}</li>`).join("")}</ul>` : notes[0]) : "";
 }
@@ -542,7 +553,7 @@ function rateSVG(s,nat,showMs){
   const aria=rateSummary(s,nat);
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${escAttr(aria)}">`+
     `<title>${xmlEsc(document.getElementById("bigttl").textContent)}</title><desc>${xmlEsc(aria)}</desc>`+
-    `${g}${crsBandsSVG(s,x)}${natpath}${lines}${line}${xAxisSVG(xs,x)}${pts}</svg>`;
+    `${g}${crsBandsSVG(s,x)}${covidMarkerSVG(xs,x)}${natpath}${lines}${line}${xAxisSVG(xs,x)}${pts}</svg>`;
 }
 
 /* ----- counts (attendances / waits for admission): auto-scaling axis from 0 ----- */
@@ -585,7 +596,7 @@ function countSVG(s){
   const aria=countSummary(s);
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${escAttr(aria)}">`+
     `<title>${xmlEsc(document.getElementById("bigttl").textContent)}</title><desc>${xmlEsc(aria)}</desc>`+
-    `${g}${line}${xAxisSVG(xs,x)}${pts}</svg>`;
+    `${g}${covidMarkerSVG(xs,x)}${line}${xAxisSVG(xs,x)}${pts}</svg>`;
 }
 
 /* ---------- text alternatives: summaries + visually-hidden data tables (also the CSV) ---------- */
