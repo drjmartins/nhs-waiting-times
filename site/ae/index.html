@@ -7,9 +7,6 @@
 <link rel="stylesheet" href="../assets/sdpl.css?v=1">
 <link rel="stylesheet" href="../assets/dashboard.css?v=1">
 <style>
-  /* A&E-only: the explanation of the selected measure, between the cards and the chart. */
-  .measurenote{margin:-6px 0 22px;border-left-color:var(--accent);color:var(--ink)}
-  .measurenote b{font-weight:600}
   .note ul{margin:4px 0 0;padding-left:18px}
   .note li{margin:2px 0}
 </style>
@@ -39,7 +36,7 @@
       <div class="typebtns" id="typebtns" role="group" aria-labelledby="orgtypelabel">
         <button type="button" class="typebtn" data-type="national" aria-pressed="false">England</button>
         <button type="button" class="typebtn" data-type="provider" aria-pressed="false">Providers</button>
-        <button type="button" class="typebtn" data-type="icb" aria-pressed="false">ICBs</button>
+        <button type="button" class="typebtn" data-type="icb" aria-pressed="false">Commissioners</button>
       </div>
       <!-- Provider-type sub-filter: scopes the org dropdown (Providers view only). Default NHS Trusts. -->
       <div class="ptyperow" id="ptyperow" hidden>
@@ -56,7 +53,7 @@
           <div id="orgpanel" class="filterpanel" hidden>
             <input id="orgsearch" class="dropsearch" type="search" autocomplete="off"
               aria-label="Filter organisations" aria-controls="orgoptions"
-              placeholder="Type a trust, centre or ICB name or code&hellip;">
+              placeholder="Type a trust or ICB name or code&hellip;">
             <div id="orgoptions" role="listbox" aria-label="Organisations"></div>
           </div>
         </div>
@@ -186,7 +183,7 @@ function footerHTML(M){
     `<b>Attendances</b> include booked appointments (counted from August 2020); one person can attend more than once. `+
     `<b>Waits for admission</b> run from the decision to admit to admission, not from arrival, so the whole time spent in A&amp;E is longer; NHS England's measure of 12 hours from arrival comes from a different collection and is not shown here.<br><br>`+
     `Provider figures are as each organisation reports them. NHS England also publishes trust figures that include Type 3 activity run by other organisations nearby; those are not shown here. `+
-    `ICB figures add up the providers in each ICB, using NHS England's mapping of providers to ICBs for that financial year; they describe services in the ICB's area, not only its residents. ICBs began in July 2022, so ICB figures start in April 2022 (the first year of NHS England's mapping); England and provider figures start in April 2018.<br><br>`+
+    `Commissioner figures add up the providers in each integrated care board (ICB), using NHS England's mapping of providers to ICBs for that financial year; they describe services in the ICB's area, not only its residents. ICBs began in July 2022, so commissioner figures start in April 2022 (the first year of NHS England's mapping); England and provider figures start in April 2018.<br><br>`+
     `Providers that never reached 100 attendances in a month are hidden. Providers that have stopped reporting (usually after a merger) are listed separately in the organisation list.`;
 }
 
@@ -331,7 +328,7 @@ function renderCards(){
         const soon = ms && (+ms.by.slice(0,4)*12 + +ms.by.slice(5)) - (+s.months[last].slice(0,4)*12 + +s.months[last].slice(5)) <= 24;
         const msTxt = ms && soon && !meets ? ` &middot; aim ${xmlEsc(ms.label)}` : "";
         body=`<div class="figure"><b>${fmtPct(cur)}</b>
-            <span class="vs ${meets?'meets':'under'}">${meets?'&#10003; meets':'&#9660; below'} ${targetPct()} standard</span></div>
+            <span class="vs ${meets?'meets':'under'}">${meets?'&#10003; meets':'&#9660; below'} ${targetPct()} target</span></div>
           <div class="spark">${sparkLine(s.performance.map(v=>v), s.target, fmtPct)}</div>
           <div class="mon">latest ${tipMonth(s.months[last])}${msTxt}</div>`;
       }
@@ -384,7 +381,7 @@ function sparkLine(all, target, fmt, zero){
   const trend=vals[li]>vals[fi]?"rising":vals[li]<vals[fi]?"falling":"broadly flat";
   const meets = target==null || vals[li]>=target;
   const tl = target==null ? "" : `<line x1="${P}" y1="${y(target).toFixed(1)}" x2="${W-P}" y2="${y(target).toFixed(1)}" stroke="var(--target)" stroke-dasharray="3 2" stroke-width="1.1"/>`;
-  const slab=`Trend sparkline: ${trend} over the last ${k} months, latest ${fmt(vals[li])}`+(target==null?".":` versus the ${targetPct()} standard.`);
+  const slab=`Trend sparkline: ${trend} over the last ${k} months, latest ${fmt(vals[li])}`+(target==null?".":` versus the ${targetPct()} target.`);
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="${escAttr(slab)}">${tl}${path}`+
     `<circle cx="${x(li).toFixed(1)}" cy="${y(vals[li]).toFixed(1)}" r="2.8" fill="${meets?'var(--org)':'var(--target)'}"/></svg>`;
 }
@@ -415,7 +412,7 @@ function renderMeasureNote(){
   // One short line per measure; definitions and technical notes are in the footer.
   const txt={
     pct4: `<b>% within 4 hours:</b> how many A&amp;E patients were admitted, transferred or discharged within 4 hours of arriving. `+
-      `The standard is ${targetPct()}; NHS England's aims are ${msText()}.`,
+      `The target is ${targetPct()}; NHS England's planning milestones are ${msText()}.`,
     attend: `<b>Attendances:</b> the number of visits to A&amp;E in the month.`,
     dta: `<b>Waits for admission:</b> patients who waited more than ${DTATH} hours for a bed after the decision to admit them, often called trolley waits.`,
   };
@@ -515,7 +512,7 @@ function rateSVG(s,nat,showMs){
     g+=`<line x1="${P.l}" y1="${y(v).toFixed(1)}" x2="${W-P.r}" y2="${y(v).toFixed(1)}" stroke="var(--grid)"/>`+
        `<text x="${P.l-6}" y="${(y(v)+3).toFixed(1)}" font-size="10" text-anchor="end" fill="var(--ink-soft)">${Math.round(v*100)}%</text>`;
   // Reference lines: the 95% standard (magenta) and the planning milestones (tan).
-  const refs=[{y:y(s.target), ly:y(s.target), label:`${targetPct()} standard`, std:true}];
+  const refs=[{y:y(s.target), ly:y(s.target), label:`${targetPct()} target`, std:true}];
   if(showMs) for(const mm of (META.milestones||[])) if(mm.target>=lo && mm.target<=hi)
     refs.push({y:y(mm.target), ly:y(mm.target), label:mm.label, std:false});
   let lines="";
@@ -605,7 +602,7 @@ function rateSummary(s,nat){
   const last=lastIdx(s.performance), cur=s.performance[last];
   return `${document.getElementById("bigttl").textContent}, ${who()}. Line chart of the monthly percentage of A&E attendances within 4 hours, `+
     `${tipMonth(s.months[0])} to ${tipMonth(s.months[last])}. Latest ${tipMonth(s.months[last])}: ${fmtPct(cur)}, `+
-    `${cur>=s.target?"at or above":"below"} the ${targetPct()} standard${nat?"; England comparison shown":""}. Full figures are in the data table below the chart.`;
+    `${cur>=s.target?"at or above":"below"} the ${targetPct()} target${nat?"; England comparison shown":""}. Full figures are in the data table below the chart.`;
 }
 function countSummary(s){
   const last=lastIdx(s.value);

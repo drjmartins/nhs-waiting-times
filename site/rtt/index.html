@@ -64,6 +64,9 @@
   <!-- Three summary cards = the MEASURE switcher (% within 18wk / waiting list / long waiters) -->
   <div class="cards" id="cards"></div>
 
+  <!-- One-line explanation of the selected card's measure (filled by renderMeasureNote). -->
+  <div class="orgnote measurenote" id="measurenote" role="note"></div>
+
   <div class="bigpanel" id="bigpanel">
     <div class="ttl"><h2 id="bigttl"></h2><span class="tag" id="bigtag"></span>
       <span class="charttools" id="charttools">
@@ -576,9 +579,23 @@ function syncControls(){
   document.getElementById("mschk").checked = SHOW_MILESTONES;
 }
 
+/* ---------- what the measure means (one line, between the cards and the chart) ---------- */
+function renderMeasureNote(){
+  const ms=(META.recovery_milestones||[]).filter(m=>m.target<META.standard_target)
+    .map(m=>`${Math.round(m.target*100)}% by ${tipMonth(m.by)}`).join(" and ");
+  const txt={
+    pct18: `<b>% within 18 weeks:</b> how many patients waiting to start consultant-led treatment have waited 18 weeks or less since referral. `+
+      `The target is ${targetPct()}`+(ms?`; NHS England's recovery milestones are ${ms}.`:`.`),
+    waitlist: `<b>Waiting-list size:</b> the number of patients waiting to start consultant-led treatment at the end of the month (counted as pathways).`,
+    longwait: `<b>Long waiters:</b> patients who have waited more than ${LWTHRESH} weeks since referral to start treatment.`,
+  };
+  document.getElementById("measurenote").innerHTML=txt[MEASURE]||"";
+}
+
 /* ---------- big chart ---------- */
 function renderBig(){
   syncControls();
+  renderMeasureNote();
   const m=measureMeta(MEASURE);
   document.getElementById("bigtag").textContent = CURRENT.isNational ? "England" : CURRENT.name;
   CSV_DATA=null;

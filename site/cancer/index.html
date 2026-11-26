@@ -110,6 +110,9 @@
   <!-- Three summary cards: latest figure + sparkline; clicking one switches the big chart. -->
   <div class="cards" id="cards"></div>
 
+  <!-- One-line explanation of the selected card's measure (filled by renderMeasureNote). -->
+  <div class="orgnote measurenote" id="measurenote" role="note"></div>
+
   <!-- One large time-series chart for the selected standard. -->
   <div class="bigpanel" id="bigpanel">
     <div class="ttl"><h2 id="bigttl"></h2><span class="tag" id="bigtag"></span>
@@ -730,7 +733,23 @@ function renderModOptions(q){
 }
 
 /* ---- big chart ---- */
+// What the selected standard means: one line between the cards and the chart. The target is the
+// one in force for the latest month; a change of target is explained under the chart (targetnote).
+function renderMeasureNote(){
+  const s=NATIONAL && NATIONAL.standards && NATIONAL.standards[CURRENT_STD]; if(!s) return;
+  const sch=s.target_schedule;
+  const tgt = sch && sch.length>1
+    ? `The target is ${fmtTarget(sch[sch.length-1][1])} from ${fullMonth(sch[sch.length-1][0])} (${fmtTarget(sch[sch.length-2][1])} before).`
+    : `The target is ${fmtTarget(s.target)}.`;
+  const txt={
+    FDS28: `<b>28-day Faster Diagnosis Standard:</b> how many patients referred urgently for suspected cancer are told they have cancer, or that it has been ruled out, within 28 days. `,
+    CMB31: `<b>31-day combined:</b> how many patients start cancer treatment within 31 days of the decision to treat, for first and later treatments. `,
+    CMB62: `<b>62-day combined:</b> how many patients start their first cancer treatment within 62 days of an urgent referral, a screening referral or a consultant upgrade. `,
+  };
+  document.getElementById("measurenote").innerHTML=(txt[CURRENT_STD]||"")+tgt;
+}
 function renderBig(){
+  renderMeasureNote();
   CSV_DATA=null;       // rebuilt by bigTableHTML; stays null when the chart is empty
   syncBreakdownUI();   // keep the route/modality controls + hint in lockstep with state
   syncRangeUI();       // keep the time-range presets in lockstep with RANGE

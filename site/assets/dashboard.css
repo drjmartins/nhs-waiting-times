@@ -161,6 +161,9 @@ svg text{font-family:ui-monospace,Menlo,monospace}
 .modal-close{position:absolute;top:12px;right:14px;z-index:2;font-size:17px;line-height:1;
   border:1px solid var(--line);background:#fff;border-radius:0;padding:6px 10px;cursor:pointer;color:var(--ink-soft)}
 .modal-close:hover{color:var(--ink);border-color:#a9a9a3}
+/* One-line explanation of the selected card's measure, between the cards and the chart. */
+.measurenote{margin:-6px 0 22px;border-left-color:var(--accent);color:var(--ink)}
+.measurenote b{font-weight:600}
 .modal-host .bigpanel{border:0;padding:8px 6px 4px}
 /* Keep the chart tools clear of the close button (it covered "Download" until 2026-11-25). */
 .modal-host .ttl{padding-right:44px}

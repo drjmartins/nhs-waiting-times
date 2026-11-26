@@ -6,6 +6,14 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
+## 2026-11-26: One-line measure banners on all three dashboards; A&E wording aligned (Claude session; user request)
+- The A&E banner (between the cards and the chart) is now on Cancer and RTT too: one line on what the selected
+  measure means and its target. Shared style `.measurenote` in `dashboard.css`; each page has `renderMeasureNote()`.
+  Cancer gives the target in force (FDS: 80% from April 2026, 75% before); the target-change banner under the chart stays.
+- A&E aligned with the others: "Commissioners" (not "ICBs"), "target" (not "standard") for the 95% line and cards.
+  "Other providers" kept rather than "Independent Sector": in A&E most non-trust providers are GP practices and urgent
+  treatment centres, not independent-sector hospitals.
+
 ## 2026-11-26: A&E history back to April 2018; 4-hour % now excludes CRS field-test trusts; measure banner (Claude session; user request)
 - **Bug caught before launch:** from May 2019 to May 2023, 14 trusts in the Clinical Review of Standards (CRS) field
   test reported no 4-hour breaches. NHS England leaves their attendances out of every 4-hour %; the first build did not,
