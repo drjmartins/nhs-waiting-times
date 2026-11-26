@@ -6,6 +6,10 @@ data/raw/
 data_rtt/raw/*.zip
 data_rtt/raw/*.xlsx
 
+# A&E raw monthly CSVs, System Mapping Files and the time series workbook (~2MB),
+# re-fetched by the pipeline; the derived site/ae/data IS committed, like RTT's.
+data_ae/raw/
+
 # Download artefacts (per-FY CSVs, headline extract, gzipped full file). Large
 # and rebuilt every run into the site/ Pages artefact; not stored in git.
 site/cancer/data/downloads/

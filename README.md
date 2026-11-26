@@ -1,12 +1,14 @@
 # NHS Waiting Times Dashboards
 
-Two public dashboards built on NHS England open data, hosted by the
+Three public dashboards built on NHS England open data, hosted by the
 [Surgical Data and Policy Lab](https://surgicaldatapolicy.org):
 
 - **Cancer Waiting Times** (`/cancer/`): 28-day Faster Diagnosis Standard and the 31- and 62-day
   combined standards, by provider and commissioner.
 - **RTT (Referral to Treatment)** (`/rtt/`): % within 18 weeks, waiting-list size and long waiters,
   by provider, commissioner and treatment function.
+- **A&E** (`/ae/`): % within 4 hours (all types or Type 1), attendances and waits from decision to
+  admit, by provider and ICB.
 
 Live site: https://waitingtimes.surgicaldatapolicy.org
 
@@ -20,13 +22,15 @@ A static site (`site/`) fed by build-time Python pipelines. No backend.
 ```
 pipeline/        cancer: discover NHS files -> normalise -> data/processed/tidy.parquet -> site/cancer/data
 pipeline_rtt/    RTT: discover + fetch monthly Full CSVs -> site/rtt/data
+pipeline_ae/     A&E: discover + fetch monthly CSVs, mapping files, time series -> site/ae/data
 pipeline_common/ shared: ODS organisation status, regions, retry
-site/            landing page, /cancer/, /rtt/, shared assets (fonts, seal, sdpl.css)
-tests/ tests_rtt/  pytest suites (run before every build and deploy)
+site/            landing page, /cancer/, /rtt/, /ae/, shared assets: sdpl.css (host-site chrome),
+                 dashboard.css + dashboard.js (code shared by the three dashboards), fonts, seal
+tests/ tests_rtt/ tests_ae/  pytest suites (run before every build and deploy)
 scripts/         the scheduled refresh (Windows Task Scheduler)
 ```
 
-Both pipelines run fail-loud reconciliation gates before writing anything.
+All three pipelines run fail-loud reconciliation gates before writing anything.
 
 ## How updates run
 
@@ -50,19 +54,21 @@ python -m pipeline.run --no-fetch              # rebuild cancer site data from t
 python -m http.server 8099 --directory site    # then open http://localhost:8099
 python -m pipeline.run                         # real cancer run (needs access to england.nhs.uk)
 python -m pipeline_rtt.run                     # real RTT run
+python -m pipeline_ae.run                      # real A&E run (--no-fetch rebuilds from data_ae/raw)
 ```
 
 ## Visitor analytics
 
 Page views are counted with [GoatCounter](https://www.goatcounter.com) (cookieless, no personal data,
-so no consent banner). One script tag sits just before `</head>` on each of the three pages
-(`site/index.html`, `site/cancer/index.html`, `site/rtt/index.html`); a new page needs the same tag.
+so no consent banner). One script tag sits just before `</head>` on each of the four pages
+(`site/index.html`, `site/cancer/index.html`, `site/rtt/index.html`, `site/ae/index.html`); a new page
+needs the same tag.
 Stats: https://sdpl-waitingtimes.goatcounter.com (log in with the lab account). Counting started when
 the tag first went live; there is no earlier data. Local previews on `localhost` are not counted.
 
 ## Data and licence
 
-Source: NHS England Cancer Waiting Times and RTT statistics, used under the Open Government
+Source: NHS England Cancer Waiting Times, RTT and A&E statistics, used under the Open Government
 Licence v3.0. These are independent tools, not affiliated with or endorsed by NHS England.
 IBM Plex Sans is bundled under the SIL Open Font License (`site/assets/fonts/`).
 

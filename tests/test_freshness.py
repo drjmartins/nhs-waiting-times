@@ -51,7 +51,7 @@ def test_check_refuses_meta_without_months(tmp_path):
 def test_committed_meta_files_exist_and_parse():
     # The watchdog runs against these committed files; they must be readable.
     res = fr.check(today=D(2000, 1, 1))
-    assert {r[0] for r in res} == {"Cancer", "RTT"}
+    assert {r[0] for r in res} == {"Cancer", "RTT", "A&E"}
 
 
 def test_js_mirror_uses_the_same_grace_period():

@@ -6,6 +6,56 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 
 ---
 
+## 2026-11-26: One-line measure banners on all three dashboards; A&E wording aligned (Claude session; user request)
+- The A&E banner (between the cards and the chart) is now on Cancer and RTT too: one line on what the selected
+  measure means. No targets or milestones in it (user decision): those are on the cards and the chart, and the
+  FDS target-change note under the chart stays. Shared style `.measurenote` in `dashboard.css`; each page has
+  `renderMeasureNote()`.
+- A&E aligned with the others: "Commissioners" (not "ICBs"), "target" (not "standard") for the 95% line and cards.
+  "Other providers" kept rather than "Independent Sector": in A&E most non-trust providers are GP practices and urgent
+  treatment centres, not independent-sector hospitals.
+
+## 2026-11-26: A&E history back to April 2018; 4-hour % now excludes CRS field-test trusts; measure banner (Claude session; user request)
+- **Bug caught before launch:** from May 2019 to May 2023, 14 trusts in the Clinical Review of Standards (CRS) field
+  test reported no 4-hour breaches. NHS England leaves their attendances out of every 4-hour %; the first build did not,
+  overstating England by ~3 points for Apr 2022 - May 2023 (75.2% vs the published 72.2% in Apr 2022). Fixed with
+  `config.CRS_TRUSTS` (RD3 became R0D in Oct 2020); the time-series gate now also checks NHS England's published 4-hour
+  denominators, and a listed trust reporting a breach fails the build. Their own % shows as a shaded gap.
+- **History:** April 2018 onwards (103 months), all matching NHS England's time series exactly on every measure. Earlier
+  years exist only as Excel workbooks (2015-18) or England-level series (from 2010); not added. Three CSV formats are read
+  (old column names to March 2020; no booked-appointment columns April-July 2020; total row with blank codes in 2019-20).
+- **ICBs start April 2022** (ICBs began July 2022; the first System Mapping File is 2022-23). England and providers start 2018.
+- **Picker:** with the longer history, providers are hidden only if no month ever reached 100 attendances; providers whose
+  figures end more than 2 months before the latest month are listed under "Stopped reporting" with a note.
+- **Measure banner** between the cards and the chart gives a one-line overview of the selected measure (standard and aims); definitions and technical notes are in the footer; dated caveats
+  (CRS, booked appointments from Aug 2020, Type 3 cyber-attack shortfall Aug 2022 - Feb 2023, COVID-19) show under the
+  chart when those months are in view. A dashed "COVID-19 (Mar 2020)" marker (styled like RTT's Feb 2024 break) shows on
+  every A&E chart that includes March 2020.
+
+## 2026-11-25: A&E dashboard (`/ae/`) and shared dashboard code: BUILT, NOT YET DEPLOYED (Claude session; user request)
+- **Shared code.** The JS and CSS common to Cancer and RTT moved to `site/assets/dashboard.js` and
+  `site/assets/dashboard.css` (org picker, org note, expand modal, downloads, number/month formatting,
+  tokens and component styles). Pages keep only their own measures, plus small hooks
+  (`closeExtraPanels`, `onOrgSwitch`, `ensureSlice`, `submissionNoteHTML`) and `EXPORT_HEADER_H`.
+  Checked pixel-for-pixel: 18 page states, 4 phone layouts, every export SVG and CSV unchanged.
+- **Two small fixes to the live dashboards** found on the way: count-axis labels rounded 1,200 and
+  1,600 to "1k" and "2k" (e.g. RTT RAE long waiters), now "1.2k", "1.6k"; in the expand view the close
+  button covered "Download", now clear.
+- **A&E source:** NHS England's monthly "A&E Attendances and Emergency Admissions" CSV, one per month
+  from April 2022, found by LINK TEXT (file names follow no pattern). Measures: % within 4 hours (all
+  types or Type 1, booked appointments included, as NHS England computes it), attendances, and waits of
+  4+/12+ hours from decision to admit. 95% standard line plus planning milestones 78% (Mar 2026),
+  82% (Mar 2027), 85% (Mar 2029, Medium Term Planning Framework, 24 Oct 2025) on the England chart.
+- **Gates (fail loud, before writing):** rows sum exactly to each file's TOTAL row; England equals NHS
+  England's Monthly A&E Time Series exactly, every month (55/55 on first build); ICBs + unmapped
+  providers equal England, unmapped under 1% (one walk-in centre, NTV0B, ~2,400 a month).
+- **ICBs:** providers summed using the System Mapping File of each financial year (fallback: nearest
+  year's file). Old ICBs end March 2026 and the merged ones start April 2026, with ODS notes.
+- **Not done (options):** trust figures with Type 3 activity attributed from nearby providers (NHS
+  England's "Type 3 Trust Attribution File"); the ECDS 12-hours-from-arrival measure.
+- **Refresh:** `pipeline_ae.run` added to `scheduled_refresh.ps1` and the workflow; `xlrd` added to
+  `requirements.txt` (NHS's .xls files), so the refresh machine needs `pip install -r requirements.txt`.
+
 ## 2026-11-23: "What's new" panel on the landing page, below the dashboard cards: DEPLOYED 2026-11-23 (PR #10, merge d92681d) (Claude session; user request)
 - Pale magenta panel with the host's magenta accent (#c2185b on #fcf1f5, AA), distinct from the navy dashboard cards and
   the amber staleness note; lists user-visible changes newest first.

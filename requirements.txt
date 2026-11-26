@@ -8,3 +8,7 @@ pandas>=2.2,<3
 openpyxl
 pyarrow
 requests
+# xlrd reads NHS England's legacy .xls workbooks (A&E System Mapping Files and the Monthly
+# A&E Time Series). The refresh machine needs `pip install -r requirements.txt` once after
+# this was added (2026-11-25).
+xlrd>=2.0

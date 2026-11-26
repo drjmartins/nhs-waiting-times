@@ -23,6 +23,7 @@ GRACE_DAYS = 84   # 12 weeks; keep in step with GRACE_DAYS in site/assets/freshn
 META_PATHS = {
     "Cancer": "site/cancer/data/meta.json",
     "RTT": "site/rtt/data/meta.json",
+    "A&E": "site/ae/data/meta.json",
 }
 
 

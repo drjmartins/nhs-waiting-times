@@ -5,182 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NHS RTT Waiting Times Dashboard</title>
 <link rel="stylesheet" href="../assets/sdpl.css?v=1">
-<style>
-  :root{
-    --ink:#141414; --ink-soft:#4a4a4a; --line:#d6d6d1; --paper:#f5f5f2;
-    --panel:#ffffff; --org:#0b1d3a; --org-muted:#6f84ad; --nat:#868686; --target:#c2185b;
-    --good:#2f7d4f; --grid:#eef3f4; --milestone:#a08a52;
-    /* Text-label tones for the target + tan milestones, decoupled from the
-       (deliberately faint) LINE colours so the labels clear 4.5:1. */
-    --target-text:#c2185b; --milestone-text:#75632f;
-    /* Chart palette re-aligned to the host site 2026-11-13 (user-approved "option B", see DECISIONS):
-       navy series, lighter navy for provisional/low-reliability, neutral grey England, magenta
-       target line + labels. On the white panel: --org 16.79:1, --org-muted 3.76:1, --nat 3.64:1,
-       --target/--target-text 5.87:1. --note keeps the amber for the banner borders. */
-    --note:#c8881d;
-    /* Host-site UI accents (surgicaldatapolicy.org): navy for links/buttons/active states,
-       magenta for the heading accent only. Kept SEPARATE from --org, which is now the
-       chart series colour only, so restyling the UI can never touch the AA-tuned charts.
-       --paper (#f5f5f2) is the page tint: charts and cards must stay on --panel (#fff). */
-    --accent:#0b1d3a; --accent-2:#c2185b;
-  }
-  *{box-sizing:border-box}
-  /* Screen-reader-only: the data-table alternative to each chart + the live region. */
-  .vh{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;
-    overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
-  /* Keyboard focus ring for the focusable SVG data points. */
-  .pt.hit:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
-  body{margin:0;background:var(--paper);color:var(--ink);
-    font-family:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;
-    line-height:1.5}
-  .wrap{max-width:1040px;margin:0 auto;padding:32px 24px 80px}
-  header{border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:8px}
-  h1{font-size:30px;margin:0 0 2px;letter-spacing:-.01em}
-  .sub{font-family:inherit;font-size:12px;
-    text-transform:uppercase;letter-spacing:.14em;color:var(--ink-soft)}
-  .controls{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin:22px 0 10px}
-  label{display:block;font-family:inherit;font-size:11px;
-    text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft);margin-bottom:5px}
-  select,input[type=search]{font:inherit;font-size:15px;padding:8px 10px;
-    border:1px solid var(--line);border-radius:0;background:#fff;min-width:min(360px,100%);max-width:100%}
-  .orgname{font-size:13px;color:var(--ink-soft);display:inline-block;margin:0 0 0 12px;vertical-align:middle}
-  .orgname:empty{display:none}
-  .orgname b{color:var(--ink)}
-  /* Single "Home" link back to the landing page (replaced the Cancer · RTT · All dashboards
-     strip, 2026-11-14). */
-  .dashnav{font-family:inherit;font-size:12px;margin-top:8px}
-  .dashnav a{color:var(--accent);text-decoration:underline}
-  .typebtns{display:inline-flex;border:1px solid var(--line);border-radius:0;overflow:hidden;margin-bottom:8px}
-  .typebtn{font:inherit;font-size:13.5px;padding:7px 15px;border:0;border-right:1px solid var(--line);
-    background:#fff;cursor:pointer;color:var(--ink-soft)}
-  .typebtn:last-child{border-right:0}
-  .typebtn:hover{background:var(--grid)}
-  .typebtn.active{background:var(--accent);color:#fff}
-  /* Provider-type sub-filter (Providers view only) — sits between the type buttons and the dropdown. */
-  .ptyperow{margin:0 0 6px}
-  .ptyperow[hidden]{display:none}
-  .ptyperow label{margin-bottom:4px}
-  .orgbtnwrap{display:inline-block;vertical-align:middle}
-  .orgbtnwrap .filterbtn{min-width:min(380px,100%);max-width:100%}
-  .filterbtn[disabled],.orgbtnwrap[hidden]{display:none}
-  .filterpanel .dropsearch{display:block;width:100%;min-width:0;font:inherit;font-size:14px;padding:7px 9px;
-    margin-bottom:6px;border:1px solid var(--line);border-radius:0}
-  .note{background:#fff7e8;border:1px solid #f0dcae;border-left:3px solid var(--note);
-    padding:10px 13px;font-size:13.5px;color:#6b561f;border-radius:0;margin:14px 0 22px}
-  /* Contextual org-lifecycle note (former/newly-formed) — neutral, distinct from the amber break note. */
-  .orgnote{background:var(--grid);border:1px solid var(--line);border-left:3px solid var(--accent);
-    padding:9px 12px;font-size:13px;color:var(--ink-soft);border-radius:0;margin:2px 0 18px}
-  .orgnote[hidden]{display:none}
-  .orgnote b{color:var(--ink)}
-  .orgnote .rellink{background:none;border:0;padding:0;font:inherit;color:var(--accent);
-    text-decoration:underline;cursor:pointer}
-  .orgnote .rellink:hover{color:var(--accent)}
-
-  /* Three summary cards = the MEASURE switcher */
-  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:18px 0 22px}
-  @media(max-width:780px){.cards{grid-template-columns:1fr}}
-  .scard{background:var(--panel);border:1px solid var(--line);border-radius:0;
-    padding:13px 15px 11px;cursor:pointer;position:relative;
-    transition:border-color .12s,box-shadow .12s;border-top:3px solid var(--line)}
-  .scard:hover{border-color:#a9a9a3}
-  .scard.active{border-top-color:var(--accent);box-shadow:0 1px 0 var(--accent) inset, 0 2px 10px rgba(11,29,58,.10)}
-  .scard h3{margin:0;font-size:14.5px;letter-spacing:-.005em}
-  .scard .stdcode{font-family:inherit;font-size:10.5px;
-    text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft)}
-  .scard .figure{display:flex;align-items:baseline;gap:8px;margin:6px 0 2px}
-  .scard .figure b{font-size:27px;font-weight:600;letter-spacing:-.02em;line-height:1;color:var(--ink);font-family:inherit}
-  .scard .figure .vs{font-size:11px;color:var(--ink-soft);font-family:inherit}
-  .scard .figure .vs.meets{color:var(--good)} .scard .figure .vs.under{color:var(--target-text)}
-  .scard .spark{margin-top:6px}
-  .scard .mon{font-family:inherit;font-size:10.5px;color:var(--ink-soft);margin-top:3px}
-  .scard.nodata{opacity:.72}
-
-  /* Big chart panel */
-  .bigpanel{background:var(--panel);border:1px solid var(--line);border-radius:0;
-    padding:16px 18px 12px;position:relative}
-  .bigpanel .ttl{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 6px}
-  .bigpanel .ttl h2{margin:0;font-size:18px;letter-spacing:-.01em}
-  .bigpanel .ttl .tag{font-family:inherit;font-size:11px;color:var(--ink-soft)}
-  .legend{display:flex;flex-wrap:wrap;align-items:center;gap:7px;
-    font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--ink-soft);margin:2px 0 4px}
-  .legend .lgitem{display:inline-flex;align-items:center;white-space:nowrap}
-  .legend .lgsep{opacity:.4}
-  .chartbox{position:relative}
-  .chartbox svg{display:block;width:100%;height:auto}
-  .pt{cursor:pointer}
-  .tip{position:absolute;z-index:5;transform:translate(-50%,-118%);pointer-events:none;
-    background:var(--ink);color:#fff;border-radius:0;padding:7px 10px;
-    font-family:ui-monospace,Menlo,monospace;font-size:11.5px;line-height:1.45;
-    white-space:nowrap;box-shadow:0 3px 12px rgba(17,32,43,.25);display:none}
-  .tip .pct{font-size:14px;font-weight:600}
-  .tip::after{content:"";position:absolute;left:var(--ax,50%);top:100%;transform:translateX(-50%);
-    border:5px solid transparent;border-top-color:var(--ink)}
-
-  .filterbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:2px 0 8px}
-  .filterbar .flabel{font-family:inherit;font-size:11px;
-    text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft)}
-  .fgrp{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
-  .fgrp[hidden]{display:none}
-  .fdrop{position:relative}
-  .filterbtn{font:inherit;font-size:14px;padding:6px 12px;border:1px solid var(--line);
-    border-radius:0;background:#fff;cursor:pointer;color:var(--ink);min-width:200px;text-align:left}
-  .filterbtn:hover{border-color:#a9a9a3}
-  .filterbtn.sliced{border-color:var(--accent);color:var(--accent);font-weight:600;box-shadow:0 1px 6px rgba(11,29,58,.10)}
-  .filterbtn .caret{float:right;color:var(--ink-soft);margin-left:8px}
-  .filterpanel{position:absolute;z-index:8;top:calc(100% + 4px);left:0;
-    min-width:min(280px,calc(100vw - 32px));max-width:min(340px,calc(100vw - 32px));
-    max-height:340px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:0;
-    box-shadow:0 6px 22px rgba(17,32,43,.16);padding:6px}
-  .filterpanel[hidden]{display:none}
-  .fgroup{font-family:inherit;font-size:10px;text-transform:uppercase;
-    letter-spacing:.1em;color:var(--ink-soft);padding:8px 8px 3px;border-top:1px solid var(--grid);margin-top:4px}
-  .fgroup.first{border-top:0;margin-top:0}
-  .fopt{display:block;width:100%;text-align:left;font:inherit;font-size:13.5px;padding:5px 8px;
-    border:0;background:none;border-radius:0;cursor:pointer;color:var(--ink)}
-  .fopt:hover{background:var(--grid)}
-  .fopt.active{background:rgba(11,29,58,.10);color:var(--accent);font-weight:600}
-  .slicehint{font-size:12px;color:var(--ink-soft)}
-  .emptyslice{padding:40px 10px;text-align:center;color:var(--ink-soft);font-size:14px}
-
-  footer{margin-top:42px;border-top:1px solid var(--line);padding-top:16px;font-size:12.5px;color:var(--ink-soft)}
-  a{color:var(--accent)}
-  svg text{font-family:ui-monospace,Menlo,monospace}
-
-  .charttools{margin-left:auto;display:inline-flex;gap:8px;align-items:center}
-  .toolbtn{font:inherit;font-size:12.5px;padding:5px 11px;border:1px solid var(--line);
-    border-radius:0;background:#fff;cursor:pointer;color:var(--ink-soft);white-space:nowrap}
-  .toolbtn:hover{border-color:#a9a9a3;color:var(--ink)}
-  .dlmenu{left:auto;right:0;min-width:160px}
-  .dlmenu .fopt{font-size:13.5px;white-space:nowrap}
-  .dlmenu .fopt:disabled{color:var(--ink-soft);opacity:.6;cursor:default}
-
-  .modal{position:fixed;inset:0;z-index:50;display:flex}
-  .modal[hidden]{display:none}
-  .modal-backdrop{position:absolute;inset:0;background:rgba(17,32,43,.55)}
-  .modal-inner{position:relative;margin:auto;width:min(1240px,96vw);max-height:95vh;
-    overflow:auto;background:var(--paper);border-radius:0;box-shadow:0 14px 54px rgba(17,32,43,.42);padding:16px}
-  .modal-close{position:absolute;top:12px;right:14px;z-index:2;font-size:17px;line-height:1;
-    border:1px solid var(--line);background:#fff;border-radius:0;padding:6px 10px;cursor:pointer;color:var(--ink-soft)}
-  .modal-close:hover{color:var(--ink);border-color:#a9a9a3}
-  .modal-host .bigpanel{border:0;padding:8px 6px 4px}
-
-  /* Segmented controls (time range + long-waiter threshold) */
-  .rangewrap{margin-left:auto;display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
-  .segbtns{display:inline-flex;border:1px solid var(--line);border-radius:0;overflow:hidden}
-  .segbtn{font:inherit;font-size:12.5px;padding:5px 11px;border:0;border-right:1px solid var(--line);
-    background:#fff;cursor:pointer;color:var(--ink-soft);white-space:nowrap}
-  .segbtn:last-child{border-right:0}
-  .segbtn:hover{background:var(--grid)}
-  .segbtn.active{background:var(--accent);color:#fff}
-  .engtoggle{display:inline-flex;align-items:center;gap:6px;margin:0;cursor:pointer;
-    font:inherit;font-size:13px;text-transform:none;letter-spacing:0;color:var(--ink)}
-  .engtoggle input{margin:0;cursor:pointer;accent-color:var(--accent)}
-  /* Host alignment: the former monospace UI labels are now Plex Sans; tighten the
-     tracking that was tuned for monospace. Chart text (svg, legend, tooltip) stays mono. */
-  .sub,label,.flabel,.fgroup{font-weight:600;letter-spacing:.07em}
-  .dashnav,header nav{font-size:13.5px;font-weight:600}
-  .wrap{padding-top:28px;padding-bottom:56px}
-</style>
+<link rel="stylesheet" href="../assets/dashboard.css?v=1">
 <!-- Visitor counts: GoatCounter (cookieless, no personal data). Stats: https://sdpl-waitingtimes.goatcounter.com -->
 <script data-goatcounter="https://sdpl-waitingtimes.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </head>
@@ -238,6 +63,9 @@
 
   <!-- Three summary cards = the MEASURE switcher (% within 18wk / waiting list / long waiters) -->
   <div class="cards" id="cards"></div>
+
+  <!-- One-line explanation of the selected card's measure (filled by renderMeasureNote). -->
+  <div class="orgnote measurenote" id="measurenote" role="note"></div>
 
   <div class="bigpanel" id="bigpanel">
     <div class="ttl"><h2 id="bigttl"></h2><span class="tag" id="bigtag"></span>
@@ -318,24 +146,18 @@
 <div id="live" class="vh" aria-live="polite" aria-atomic="true"></div>
 
 <script src="../assets/freshness.js?v=1"></script>
+<script src="../assets/dashboard.js?v=1"></script>
 <script>
-const DATA = "data/";
-// Cache-bust: every data file (except meta.json itself) is fetched with a build-version
-// token derived from meta.built_at, so a new index.html can never pair with a browser-
-// or CDN-cached index.json from a previous build. meta.json is fetched no-store so the
-// token always reflects the latest deployed build (it's tiny). Set in init().
-let DV="";
-const durl = path => DATA+path+(DV?(path.includes("?")?"&":"?")+"v="+DV:"");
-const NATIONAL_CODE = "__NATIONAL__";
+// Hooks and constants for the shared code in assets/dashboard.js.
+const EXPORT_HEADER_H = 58;              // export image header: title and subtitle
+async function ensureSlice(){ if(TF!==null) await ensureBreakdown(); }
 const DEFAULT_MEASURE = "pct18";
 const THRESH = 10;                       // pipeline RELIABILITY_THRESHOLD (pct18 only; ~never trips at all-TF level)
 let META=null, NATIONAL=null, CURRENT=null;
 let MEASURE=DEFAULT_MEASURE;             // pct18 | waitlist | longwait  (the three cards)
 let CURRENT_TYPE="national";             // national | provider | icb
 let PTYPE="trust";                       // provider-type filter: trust | independent (default NHS Trusts)
-const ptypeOf = o => o.ptype==="independent" ? "independent" : "trust";  // absent => NHS trust
 let LWTHRESH=52;                         // long-waiter threshold (52|65|78|104), shown for the longwait measure
-const RANGE_MONTHS={"3y":36,"12m":12,"all":Infinity};
 let RANGE="all";   // default: all months (user decision 2026-11-20; was "3y")
 let SHOW_MILESTONES=true;                // recovery-milestone lines (England, all treatment functions, % measure only)
 let SHOW_ENGLAND=true;                   // England comparison overlay (% measure only — counts don't share a scale)
@@ -351,29 +173,7 @@ const MEASURES=[
 ];
 const measureMeta = k => MEASURES.find(m=>m.key===k);
 
-const ABBR=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const _MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
-const fmtPct = p => (p*100).toFixed(1)+"%";
 const targetPct = () => Math.round(META.standard_target*100)+"%";   // "92%" — no decimal
-const monthLabel = m => {const[y,mm]=m.split("-");return ABBR[+mm-1]+" "+y.slice(2);};
-const tipMonth   = m => {const[y,mm]=m.split("-");return ABBR[+mm-1]+" "+y;};
-const fullMonth = m => {const[y,mm]=m.split("-");return _MN[+mm-1]+" "+y;};
-const isoDate = iso => {const[y,m,d]=iso.slice(0,10).split("-");return (+d)+" "+_MN[+m-1]+" "+y;};
-const commas = v => (+v).toLocaleString();
-// Compact count: 7,093,502 -> "7.09M"; 97,388 -> "97.4k"; 154 -> "154".
-function fmtCompact(v){
-  v=+v;
-  if(v>=1e6) return (v/1e6).toFixed(2)+"M";
-  if(v>=1e4) return (v/1e3).toFixed(1)+"k";
-  if(v>=1e3) return (v/1e3).toFixed(2)+"k";
-  return commas(v);
-}
-// Axis tick label: clean K/M with no trailing decimals where possible.
-function fmtAxis(v){
-  if(v>=1e6) return (v/1e6)%1===0 ? (v/1e6)+"M" : (v/1e6).toFixed(1)+"M";
-  if(v>=1e3) return (v/1e3)%1===0 ? (v/1e3)+"k" : (v/1e3).toFixed(0)+"k";
-  return ""+v;
-}
 
 function footerHTML(M){
   const latest=fullMonth(M.months[M.months.length-1]), built=isoDate(M.built_at);
@@ -439,135 +239,7 @@ async function init(){
   }
 }
 
-/* ---------- org picker (reused from the cancer dashboard) ---------- */
-async function setType(type, code){
-  CURRENT_TYPE=type;
-  document.querySelectorAll("#typebtns .typebtn").forEach(b=>{ const on=b.dataset.type===type;
-    b.classList.toggle("active", on); b.setAttribute("aria-pressed", on?"true":"false"); });
-  closeOrgPanel();
-  const drop=document.getElementById("orgdrop");
-  if(type==="national"){
-    document.getElementById("ptyperow").hidden=true;
-    drop.hidden=true;
-    document.getElementById("orglabel").textContent="England — all-England";
-    await loadNational(); return;
-  }
-  // Provider-type filter shows for Providers only. DEEP-LINK SAFETY: when a specific
-  // org is requested, the filter FOLLOWS that org's type so the link is never hidden;
-  // otherwise default to NHS Trusts.
-  if(type==="provider"){
-    const e=code && window._idx.find(o=>o.code===code);
-    PTYPE = e ? ptypeOf(e) : "trust";
-    document.getElementById("ptyperow").hidden=false;
-    updatePtypeButtons();
-  } else {
-    document.getElementById("ptyperow").hidden=true;
-  }
-  drop.hidden=false;
-  const list=orgListFor(type);
-  const full=window._idx.filter(o=>o.level===type);
-  const pick=(code && full.find(o=>o.code===code)) || list[0];
-  if(!pick) return;
-  document.getElementById("orglabel").textContent=`${pick.name} (${pick.code})`;
-  buildOrgOptions("");
-  await loadOrg(pick.code);
-}
-// Provider-type sub-filter: re-scope the dropdown to the chosen type, then select
-// its first org so the chart never blanks.
-function setPtype(pt){
-  if(pt===PTYPE || CURRENT_TYPE!=="provider") return;
-  PTYPE=pt; updatePtypeButtons(); closeOrgPanel();
-  const list=orgListFor("provider"); buildOrgOptions("");
-  if(list.length){ document.getElementById("orglabel").textContent=`${list[0].name} (${list[0].code})`; loadOrg(list[0].code); }
-}
-function updatePtypeButtons(){
-  document.querySelectorAll("#ptypebtns .ptypebtn").forEach(b=>{ const on=b.dataset.ptype===PTYPE;
-    b.classList.toggle("active", on); b.setAttribute("aria-pressed", on?"true":"false"); });
-}
-function orgListFor(type){
-  let list=window._idx.filter(o=>o.level===type && !o.hidden);
-  if(type==="provider") list=list.filter(o=>ptypeOf(o)===PTYPE);   // provider-type filter
-  return list.sort((a,b)=>a.name.localeCompare(b.name));
-}
-// Commissioner sub-grouping off the org NAME: ICB vs Other (the national hubs).
-// (Providers are scoped by the ODS-role provider-type FILTER, so they need no
-// name-based NHS-Trust/Independent grouping inside the list.)
-function orgGroupOf(o){
-  if(o.former) return "Former organisations";   // closed/superseded per ODS — own group, still selectable
-  const u=(o.name||"").toUpperCase();
-  if(o.level==="icb") return u.includes("INTEGRATED CARE BOARD") ? "ICB" : "Other";
-  return "Current";
-}
-function buildOrgOptions(q){
-  const host=document.getElementById("orgoptions"); host.innerHTML="";
-  q=(q||"").trim().toLowerCase();
-  const list=orgListFor(CURRENT_TYPE).filter(o=> !q || o.name.toLowerCase().includes(q) || o.code.toLowerCase().includes(q));
-  if(!list.length){ host.innerHTML='<div class="fgroup first">No matches</div>'; return; }
-  // Providers: the type filter already scopes the list, so just split current vs
-  // Former (no redundant type header). Commissioners keep ICB / Other / Former.
-  // Former orgs stay SELECTABLE — their history is still viewable after a merger.
-  const groups = CURRENT_TYPE==="icb"
-    ? [["ICB","ICB"],["Other","Other"],["Former organisations","Former organisations"]]
-    : [["Current",null],["Former organisations","Former organisations"]];
-  let first=true;
-  for(const [key,label] of groups){
-    const items = key==="Current" ? list.filter(o=>!o.former) : list.filter(o=>orgGroupOf(o)===key);
-    if(!items.length) continue;
-    if(label){ const h=document.createElement("div"); h.className="fgroup"+(first?" first":""); h.textContent=label; host.appendChild(h); }
-    first=false;
-    items.forEach(o=>{ const b=document.createElement("button");
-      const on=CURRENT && CURRENT.code===o.code;
-      b.className="fopt"+(on?" active":"");
-      b.setAttribute("role","option"); b.setAttribute("aria-selected", on?"true":"false");
-      b.textContent=`${o.name} (${o.code})`;
-      b.onclick=()=>selectOrg(o); host.appendChild(b); });
-  }
-}
-function selectOrg(o){
-  document.getElementById("orglabel").textContent=`${o.name} (${o.code})`;
-  closeOrgPanel(); loadOrg(o.code);
-}
-function toggleOrgPanel(){ const p=document.getElementById("orgpanel"); if(p && !p.hidden) closeOrgPanel(); else openOrgPanel(); }
-function openOrgPanel(){
-  if(CURRENT_TYPE==="national") return;
-  const p=document.getElementById("orgpanel"), s=document.getElementById("orgsearch");
-  s.value=""; buildOrgOptions("");
-  p.hidden=false; document.getElementById("orgbtn").setAttribute("aria-expanded","true");
-  setTimeout(()=>{ const act=p.querySelector(".fopt.active"); if(act) act.scrollIntoView({block:"nearest"}); s.focus({preventScroll:true}); },0);
-}
-function closeOrgPanel(){ const p=document.getElementById("orgpanel"); if(p)p.hidden=true;
-  const b=document.getElementById("orgbtn"); if(b)b.setAttribute("aria-expanded","false"); }
-function dropSearchKey(e){
-  if(e.key==="Enter"){ const f=e.target.parentElement.querySelector(".fopt"); if(f){e.preventDefault();f.click();} }
-  else if(e.key==="Escape"){ closeOrgPanel(); }
-}
-
-async function loadNational(){
-  CURRENT = Object.assign({code:NATIONAL_CODE, name:"England", level:"national", region:"England", isNational:true}, NATIONAL);
-  BREAKDOWN=null;
-  renderOrgNote(null);
-  if(TF!==null) await ensureBreakdown();
-  render();
-}
-async function loadOrg(code){
-  CURRENT = await (await fetch(durl("org/"+code+".json"))).json();
-  CURRENT.isNational=false;
-  BREAKDOWN=null;                       // breakdown is per-org; refetch lazily
-  renderOrgNote(code);
-  if(TF!==null) await ensureBreakdown();
-  render();
-}
-
-// Jump to a related org (a successor / predecessor from the ODS change note).
-function goToOrg(code){
-  const e=(window._idx||[]).find(o=>o.code===code);
-  if(e) setType(e.level, e.code);
-}
-const _fullM=["January","February","March","April","May","June","July","August","September","October","November","December"];
-const longDate = iso => { if(!iso) return ""; const[y,m]=iso.split("-"); return _fullM[+m-1]+" "+y; };
-// Generic, auto-generated lifecycle note (no hand-written per-merger text), built
-// from the index entry's ODS succession fields. Former → "Closed … — see related:";
-// newly-formed → "Formed … — see related:". Hidden when neither applies.
+/* ---------- organisation note (the org picker itself is in assets/dashboard.js) ---------- */
 // "Did not submit" notes (DECISIONS 2026-11-20): `not_submitted` on a provider and
 // `excludes` on an ICB come from the pipeline, which only flags gaps that NHS England
 // itself filled with an estimate. Returns HTML ("" when nothing to say).
@@ -598,31 +270,6 @@ function submissionNoteHTML(){
     return `<b>Missing data.</b> Providers treating this ICB's patients that did not submit RTT data: ${list}.`;
   }
   return "";
-}
-function renderOrgNote(code){
-  const box=document.getElementById("orgnote");
-  const e=code ? (window._idx||[]).find(o=>o.code===code) : null;
-  const sub=code ? submissionNoteHTML() : "";
-  if(!e || (!e.former && e.reltype!=="formed")){
-    box.hidden=!sub; box.innerHTML=sub; return; }
-  const rel=(e.related||[]).map(r=>{
-    const known=(window._idx||[]).some(o=>o.code===r.code);
-    return known ? `<button type="button" class="rellink" onclick="goToOrg('${r.code}')">${r.name}</button>`
-                 : `${r.name} (${r.code})`;
-  });
-  let msg;
-  if(e.former){
-    const when=longDate(e.closed);
-    msg=`<b>Closed${when?" "+when:""}.</b> This organisation was reorganised`+
-        (rel.length?` — see related organisation${rel.length>1?"s":""}: ${rel.join(", ")}.`:".")+
-        ` Its figures up to closure remain viewable here.`;
-  } else {
-    const when=longDate(e.opened);
-    msg=`<b>Formed${when?" "+when:""}.</b> This is a new organisation`+
-        (rel.length?`, drawing on the area${rel.length>1?"s":""} of: ${rel.join(", ")}.`:".")+
-        ` Earlier months are not available under this code.`;
-  }
-  box.innerHTML=msg+(sub?"<br>"+sub:""); box.hidden=false;
 }
 
 function render(){
@@ -810,7 +457,6 @@ function gapBandsSVG(s, x){
 }
 const GAP_SWATCH=`<svg width="28" height="12" style="vertical-align:middle;margin-right:5px"><rect x="1" y="1" width="26" height="10" fill="var(--grid)" stroke="var(--line)"/></svg>`;
 const gapLegend = s => (s.gap && s.gap.some(Boolean)) ? `<span class="lgitem">${GAP_SWATCH}no data submitted</span>` : "";
-const lastIdx = arr => { for(let i=arr.length-1;i>=0;i--) if(arr[i]!=null) return i; return -1; };
 // Legend entry for the estimate line; allowed to wrap so it reflows at 320px.
 const estLegend = item => item.replace('<span class="lgitem">','<span class="lgitem" style="white-space:normal">');
 function estPath(vals, x, y){
@@ -818,19 +464,6 @@ function estPath(vals, x, y){
   for(let i=0;i<vals.length;i++){ const v=vals[i]; if(v==null){on=false;continue;}
     d+=(on?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1)+" "; on=true; }
   return d ? `<path d="${d.trim()}" fill="none" stroke="var(--nat)" stroke-width="2" stroke-linejoin="round"/>` : "";
-}
-// Clip parallel arrays to months >= minMonth (string compare on "YYYY-MM").
-function clipObj(s, minMonth){
-  if(!s||!s.months||!s.months.length||minMonth==null) return s;
-  const i0=s.months.findIndex(m=>m>=minMonth);
-  if(i0<=0) return s;
-  const out=Object.assign({},s);
-  for(const k of Object.keys(s)) if(Array.isArray(s[k])) out[k]=s[k].slice(i0);
-  return out;
-}
-function firstVisibleMonth(months){
-  const n=RANGE_MONTHS[RANGE];
-  return (!isFinite(n) || months.length<=n) ? months[0] : months[months.length-n];
 }
 
 /* ---------- summary cards (the measure switcher) ---------- */
@@ -926,9 +559,7 @@ function sparkCount(s){
 }
 
 /* ---------- controls sync ---------- */
-function setRange(r){ if(RANGE===r || !(r in RANGE_MONTHS)) return; RANGE=r; renderBig(); }
 function setThresh(t){ if(LWTHRESH===t) return; LWTHRESH=t; renderCards(); renderBig(); }
-function setShowEngland(on){ if(SHOW_ENGLAND===on) return; SHOW_ENGLAND=on; renderBig(); }
 function setShowMilestones(on){ if(SHOW_MILESTONES===on) return; SHOW_MILESTONES=on; renderBig(); }
 // Milestones only apply to the all-England, all-treatment-function headline (see renderRate).
 function milestonesApply(){ return MEASURE==="pct18" && TF===null && !!CURRENT && CURRENT.isNational; }
@@ -948,9 +579,20 @@ function syncControls(){
   document.getElementById("mschk").checked = SHOW_MILESTONES;
 }
 
+/* ---------- what the measure means (one line, between the cards and the chart) ---------- */
+function renderMeasureNote(){
+  const txt={
+    pct18: `<b>% within 18 weeks:</b> how many patients waiting to start consultant-led treatment have waited 18 weeks or less since referral.`,
+    waitlist: `<b>Waiting-list size:</b> the number of patients waiting to start consultant-led treatment at the end of the month (counted as pathways).`,
+    longwait: `<b>Long waiters:</b> patients who have waited more than ${LWTHRESH} weeks since referral to start treatment.`,
+  };
+  document.getElementById("measurenote").innerHTML=txt[MEASURE]||"";
+}
+
 /* ---------- big chart ---------- */
 function renderBig(){
   syncControls();
+  renderMeasureNote();
   const m=measureMeta(MEASURE);
   document.getElementById("bigtag").textContent = CURRENT.isNational ? "England" : CURRENT.name;
   CSV_DATA=null;
@@ -988,13 +630,6 @@ function breakMarkerSVG(xs, x){
   const lx=Math.max(P.l+50, Math.min(W-P.r-50, mx));
   return `<line x1="${mx}" y1="${(P.t-18).toFixed(1)}" x2="${mx}" y2="${(H-P.b).toFixed(1)}" stroke="var(--ink-soft)" stroke-dasharray="4 3" stroke-width="1" opacity="0.7"/>`+
     `<text x="${lx.toFixed(1)}" y="${P.t-22}" font-size="9.5" text-anchor="middle" fill="var(--ink-soft)">Feb 2024 break</text>`;
-}
-function xAxisSVG(xs, x){
-  const {H}=BG; const n=xs.length;
-  let xl=""; const lstep=Math.max(1,Math.ceil(n/8)), guard=Math.ceil(lstep*0.75);   // was lstep/2: the last two labels crowded in the default "All" view
-  for(let i=0;i<n-guard;i+=lstep) xl+=`<text x="${x(i).toFixed(1)}" y="${H-8}" font-size="10" text-anchor="middle" fill="var(--ink-soft)">${monthLabel(xs[i])}</text>`;
-  xl+=`<text x="${x(n-1).toFixed(1)}" y="${H-8}" font-size="10" text-anchor="end" fill="var(--ink-soft)">${monthLabel(xs[n-1])}</text>`;
-  return xl;
 }
 
 const titleSuffix = () => isSliced() ? " — "+tfName(TF) : "";
@@ -1141,13 +776,6 @@ function renderCount(){
   attachTips(s, "count");
   announce(countSummary(s));
 }
-// "nice" top tick at 1/2/5 x 10^k >= max
-function niceTop(max){
-  if(max<=0) return 1;
-  const exp=Math.floor(Math.log10(max)), base=max/Math.pow(10,exp);
-  const mult = base<=1?1 : base<=2?2 : base<=5?5 : 10;
-  return mult*Math.pow(10,exp);
-}
 function countScales(s){
   const xs=s.months,n=xs.length, vals=s.value.filter(v=>v!=null).map(Number).concat((s.est||[]).filter(v=>v!=null));
   const top=niceTop(Math.max(...vals,1)), lo=0, hi=top;
@@ -1231,24 +859,8 @@ function countTableHTML(s){
   return `<div class="vh"><table><caption>Data table: ${xmlEsc(title)}, ${xmlEsc(who)} — ${xmlEsc(s.label)}, the figures plotted above.</caption>`+
     `<thead><tr><th scope="col">Month</th><th scope="col">${xmlEsc(s.unit)}</th>`+(s.estTip?`<th scope="col">Incl. estimates for missing trusts</th>`:``)+`</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
-function legendSwatch(lineAttrs, markAttrs, square){
-  const mark = !markAttrs ? ``
-    : square ? `<rect x="10.5" y="2.5" width="7" height="7" ${markAttrs}/>`
-             : `<circle cx="14" cy="6" r="3" ${markAttrs}/>`;
-  return `<svg width="28" height="12" style="vertical-align:middle;margin-right:5px"><line x1="1" y1="6" x2="27" y2="6" fill="none" ${lineAttrs}/>${mark}</svg>`;
-}
 
 /* ---------- tooltips ---------- */
-function attachTips(s, kind){
-  const box=document.getElementById("chartbox");
-  box.querySelectorAll(".pt").forEach(c=> c.addEventListener("mouseenter",()=>showTip(+c.dataset.i, s, kind)));
-  // Keyboard parity: focusable hit targets show the same tooltip on focus.
-  box.querySelectorAll(".pt.hit").forEach(c=>{
-    c.addEventListener("focus",()=>showTip(+c.dataset.i, s, kind));
-    c.addEventListener("blur",hideTip);
-  });
-  box.addEventListener("mouseleave",hideTip);
-}
 function showTip(i, s, kind){
   const tip=document.getElementById("tip"); if(!tip) return;
   let sc, vy, html;
@@ -1280,71 +892,10 @@ function showTip(i, s, kind){
   tip.style.transform=`translate(calc(-50% + ${shift.toFixed(0)}px),-118%)`;
   tip.style.setProperty("--ax", `calc(50% - ${shift.toFixed(0)}px)`);
 }
-function hideTip(){const t=document.getElementById("tip"); if(t)t.style.display="none";}
 
-/* ---------- expand modal (reused) ---------- */
-let EXPANDED=false, _panelHome=null;
-function setExpandLabel(){ const b=document.getElementById("expandbtn");
-  if(b) b.innerHTML = EXPANDED ? "&#10529; Exit full screen" : "&#10530; Expand"; }
-function modalFocusables(){
-  const inner=document.querySelector("#chartmodal .modal-inner"); if(!inner) return [];
-  return [...inner.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])')]
-    .filter(el=>el.getClientRects().length);
-}
-function modalTrap(e){
-  if(!EXPANDED || e.key!=="Tab") return;
-  const f=modalFocusables(); if(!f.length) return;
-  const first=f[0], last=f[f.length-1];
-  if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
-  else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
-}
-function openModal(){
-  if(EXPANDED) return;
-  const panel=document.getElementById("bigpanel");
-  _panelHome={parent:panel.parentNode, next:panel.nextSibling};
-  document.getElementById("modalhost").appendChild(panel);
-  document.getElementById("chartmodal").hidden=false;
-  document.body.style.overflow="hidden";
-  document.querySelectorAll(".wrap,.sitebar,.sitefoot").forEach(el=>{ el.setAttribute("aria-hidden","true"); el.inert=true; });
-  document.addEventListener("keydown", modalTrap, true);
-  EXPANDED=true; setExpandLabel(); renderBig();
-  setTimeout(()=>{ const c=document.getElementById("modalclose"); if(c) c.focus(); },0);
-}
-function closeModal(){
-  if(!EXPANDED) return;
-  const panel=document.getElementById("bigpanel"); closeDlPanel();
-  if(_panelHome) _panelHome.parent.insertBefore(panel, _panelHome.next);
-  document.getElementById("chartmodal").hidden=true;
-  document.body.style.overflow="";
-  document.querySelectorAll(".wrap,.sitebar,.sitefoot").forEach(el=>{ el.removeAttribute("aria-hidden"); el.inert=false; });
-  document.removeEventListener("keydown", modalTrap, true);
-  EXPANDED=false; setExpandLabel(); renderBig();
-  const eb=document.getElementById("expandbtn"); if(eb) eb.focus();
-}
-function toggleExpand(){ EXPANDED ? closeModal() : openModal(); }
-
-/* ---------- image export (reused, generalised over measure) ---------- */
-function closeDlPanel(){ const p=document.getElementById("dlpanel"); if(p)p.hidden=true;
-  const b=document.getElementById("dlbtn"); if(b)b.setAttribute("aria-expanded","false"); }
-function toggleDlPanel(){ const p=document.getElementById("dlpanel");
-  if(p && !p.hidden){ closeDlPanel(); return; }
-  if(p){ document.getElementById("dlcsv").disabled=!CSV_DATA;
-    p.hidden=false; document.getElementById("dlbtn").setAttribute("aria-expanded","true"); } }
-function resolvePalette(str){
-  const cs=getComputedStyle(document.documentElement);
-  return str.replace(/var\((--[a-z-]+)\)/g, (m,k)=>{ const v=cs.getPropertyValue(k).trim(); return v||m; });
-}
-function xmlEsc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-function escAttr(s){ return xmlEsc(s).replace(/"/g,"&quot;"); }
-function announce(msg){ const l=document.getElementById("live"); if(!l) return;
-  l.textContent=""; setTimeout(()=>{ l.textContent=msg; },30); }
+/* ---------- downloads (shared plumbing in assets/dashboard.js) ---------- */
 // Shorter name for the missing-data note: drops a trailing "(formerly …)".
 function noteName(name){ return humanName(name.replace(/\s*\(FORMERLY[^)]*\)\s*$/i,"")); }
-function humanName(name){
-  const keep=new Set(["NHS","FT","ICB","UHB","HMP","MSK"]), small=new Set(["AND","OF","THE","FOR"]);
-  return name.split(/\s+/).map(w=>{ const u=w.toUpperCase();
-    return keep.has(u)?u : small.has(u)?w.toLowerCase() : w.charAt(0).toUpperCase()+w.slice(1).toLowerCase(); }).join(" ");
-}
 function exportName(ext){
   const m=measureMeta(MEASURE);
   const parts=[CURRENT.isNational?"England":humanName(CURRENT.name), m.title];
@@ -1367,41 +918,8 @@ function buildExportSVG(){
     `<g transform="translate(0,${headerH})">${chartSvg.innerHTML}</g></svg>`;
   return resolvePalette(svg);
 }
-/* ---------- CSV download of the figures in the current chart ----------
-   Each data-table builder also records CSV_DATA from the SAME clipped series, so the
-   download always matches what is on screen (organisation, filters, time range).
-   Numbers are raw (no thousands separators, % to 2 dp) so they work in a spreadsheet. */
-let CSV_DATA=null;
-const pct2 = p => p==null ? "" : +(p*100).toFixed(2);
-function csvCell(v){ if(v==null) return ""; const t=String(v); return /[",\r\n]/.test(t) ? '"'+t.replace(/"/g,'""')+'"' : t; }
-function downloadCSV(){
-  if(!CSV_DATA) return;
-  const ctx=[CURRENT.isNational?"England":humanName(CURRENT.name), CURRENT.isNational?"":CURRENT.code,
-             document.getElementById("bigttl").textContent, csvFilter()];
-  const head=["Organisation","Code","Chart","Selection",...CSV_DATA.header];
-  const lines=[head, ...CSV_DATA.rows.map(r=>[...ctx,...r])].map(r=>r.map(csvCell).join(","));
-  lines.push("", csvCell(`Source: NHS England, via ${location.origin}${location.pathname}. Downloaded ${new Date().toISOString().slice(0,10)}.`));
-  // BOM so Excel opens accented names correctly.
-  saveBlob(new Blob(["\ufeff"+lines.join("\r\n")+"\r\n"],{type:"text/csv;charset=utf-8"}), exportName("csv"));
-}
+// The "Selection" column of the CSV download.
 function csvFilter(){ return TF ? tfName(TF) : "All treatment functions"; }
-function saveBlob(blob, name){
-  const url=URL.createObjectURL(blob), a=document.createElement("a");
-  a.href=url; a.download=name; document.body.appendChild(a); a.click();
-  a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1500);
-}
-function downloadChart(kind){
-  const svg=buildExportSVG(); if(!svg) return;
-  if(kind==="svg"){ saveBlob(new Blob([svg],{type:"image/svg+xml;charset=utf-8"}), exportName("svg")); return; }
-  const scale=2, {W,H}=BG, headerH=58, w=W*scale, h=(H+headerH)*scale;
-  const img=new Image();
-  const url=URL.createObjectURL(new Blob([svg],{type:"image/svg+xml;charset=utf-8"}));
-  img.onload=()=>{ const c=document.createElement("canvas"); c.width=w; c.height=h;
-    const ctx=c.getContext("2d"); ctx.scale(scale,scale); ctx.drawImage(img,0,0);
-    URL.revokeObjectURL(url); c.toBlob(b=>{ if(b) saveBlob(b, exportName("png")); }, "image/png"); };
-  img.onerror=()=>URL.revokeObjectURL(url);
-  img.src=url;
-}
 
 init();
 </script>

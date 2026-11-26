@@ -29,7 +29,7 @@ Two public dashboards on NHS England open data, hosted by the Surgical Data and 
 - **Downloads:** each chart downloads as PNG or SVG, and its figures as a CSV spreadsheet (DECISIONS 2026-11-23).
 - **What's new:** panel on the landing page; add a line to `WHATS_NEW` in `site/index.html` for any user-visible change.
 - **Navigation:** landing page cards lead to each dashboard; each dashboard has a single "Home" link.
-- **Visitor analytics:** GoatCounter (cookieless) on all three pages; stats at https://sdpl-waitingtimes.goatcounter.com.
+- **Visitor analytics:** GoatCounter (cookieless) on all four pages; stats at https://sdpl-waitingtimes.goatcounter.com.
   DECISIONS 2026-11-21.
 
 ## How updates run
@@ -44,7 +44,7 @@ NHS England's website blocks GitHub Actions' servers, so fetching and publishing
    data as-is, then deploy to GitHub Pages. The `schedule:` trigger is commented out on purpose. `built_at` is preserved,
    so "Last updated" names the data refresh, not the deploy day.
 3. **Staleness safeguards.** If the data falls more than 12 weeks behind the end of its latest month, an amber "Data may be
-   out of date" note appears on all three pages (`site/assets/freshness.js`), and the weekly `freshness-check.yml` workflow
+   out of date" note appears on all four pages (`site/assets/freshness.js`), and the weekly `freshness-check.yml` workflow
    opens an issue. Rule lives in `pipeline_common/freshness.py`; DECISIONS 2026-11-13.
 
 **To publish what is already committed:** Actions tab, "Update CWT + RTT data and deploy", Run workflow (or
@@ -60,6 +60,8 @@ Pull `master` first: the scheduled refresh adds data commits. For anything touch
 gates or deploy, read the relevant `DECISIONS.md` entries before changing code.
 
 ## Open items
+00. **A&E dashboard (`/ae/`) built 2026-11-25, not yet deployed.** Before the first scheduled refresh
+   with it, the refresh machine needs `pip install -r requirements.txt` (adds `xlrd`). See DECISIONS 2026-11-25.
 0. **Tell Obafunsho (John)** that the refresh now downloads NHS England's overview workbook and stops if it is missing
    or mismatched, and check that his first run after 2026-11-20 brings in the ICB estimates.
 1. **Data cleaning** was listed as the next task in June and has not been scoped.
@@ -84,4 +86,5 @@ python -m pipeline.run --no-fetch              # rebuild cancer site data from t
 python -m http.server 8099 --directory site    # then open http://localhost:8099
 python -m pipeline.run                         # real cancer run (needs access to england.nhs.uk)
 python -m pipeline_rtt.run                     # real RTT run
+python -m pipeline_ae.run                      # real A&E run
 ```
