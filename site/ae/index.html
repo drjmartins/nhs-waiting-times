@@ -7,8 +7,8 @@
 <link rel="stylesheet" href="../assets/sdpl.css?v=1">
 <link rel="stylesheet" href="../assets/dashboard.css?v=1">
 <style>
-  /* A&E-only: the measure explanation banner sits above the cards. */
-  .measurenote{margin:4px 0 16px;border-left-color:var(--accent);color:var(--ink)}
+  /* A&E-only: the explanation of the selected measure, between the cards and the chart. */
+  .measurenote{margin:-6px 0 22px;border-left-color:var(--accent);color:var(--ink)}
   .measurenote b{font-weight:600}
   .measurenote .more{color:var(--ink-soft)}
   .note ul{margin:4px 0 0;padding-left:18px}
@@ -69,11 +69,11 @@
   <!-- Contextual org-lifecycle note: shown when a former / newly-formed org is selected. -->
   <div class="orgnote" id="orgnote" hidden></div>
 
-  <!-- What the selected measure means (A&E measures are less self-explanatory than RTT's or cancer's). -->
-  <div class="orgnote measurenote" id="measurenote" role="note"></div>
-
   <!-- Three summary cards = the MEASURE switcher (% within 4 hours / attendances / waits for admission) -->
   <div class="cards" id="cards"></div>
+
+  <!-- What the selected card's measure means (A&E measures are less self-explanatory than RTT's or cancer's). -->
+  <div class="orgnote measurenote" id="measurenote" role="note"></div>
 
   <div class="bigpanel" id="bigpanel">
     <div class="ttl"><h2 id="bigttl"></h2><span class="tag" id="bigtag"></span>

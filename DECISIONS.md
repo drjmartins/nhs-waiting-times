@@ -18,7 +18,7 @@ entries on top. Keep entries short (~3 lines): what, why, date, which session.
 - **ICBs start April 2022** (ICBs began July 2022; the first System Mapping File is 2022-23). England and providers start 2018.
 - **Picker:** with the longer history, providers are hidden only if no month ever reached 100 attendances; providers whose
   figures end more than 2 months before the latest month are listed under "Stopped reporting" with a note.
-- **Measure banner** above the cards explains the selected measure (definition, standard and aims, A&E types); dated caveats
+- **Measure banner** between the cards and the chart (moved there on request the same day) explains the selected measure (definition, standard and aims, A&E types); dated caveats
   (CRS, booked appointments from Aug 2020, Type 3 cyber-attack shortfall Aug 2022 - Feb 2023, COVID-19) show under the
   chart when those months are in view.
 
